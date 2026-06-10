@@ -28,7 +28,7 @@ COPY backend/app/ ./app/
 COPY --from=frontend-build /frontend/dist ./static/
 
 # 暴露端口
-EXPOSE 8000
+EXPOSE 8080
 
 # 启动命令
-CMD ["gunicorn", "app.main:app", "-w", "2", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "--access-logfile", "-"]
+CMD ["sh", "-c", "gunicorn app.main:app -w 2 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8080} --access-logfile -"]

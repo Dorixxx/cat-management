@@ -102,6 +102,8 @@ Zeabur 上只需要给应用服务配置数据库环境变量：
 DATABASE_URL=你的 PostgreSQL 连接串
 ```
 
+容器默认监听 `8080`，也会尊重 Zeabur 注入的 `PORT` 环境变量。
+
 如果 Zeabur 注入的是 `POSTGRES_*` 或 `PG*` 变量，后端也会尝试自动组装连接串。部署后访问：
 
 - `/`：前端页面
@@ -139,3 +141,4 @@ docker compose -f docker-compose.prod.yml up -d
 ```
 
 Compose 会启动 PostgreSQL 和单服务应用，前端页面和后端 API 都由后端容器提供。
+本地 Compose 会把宿主机 `8000` 映射到容器 `8080`。
