@@ -116,3 +116,13 @@ class Expense(Base):
     created_at = Column(DateTime, default=datetime.now)
 
     cat = relationship("Cat", back_populates="expenses")
+
+
+class BarkConfig(Base):
+    __tablename__ = "bark_configs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    bark_key = Column(String(255), nullable=False)
+    bark_server = Column(String(255), default="https://api.day.app")
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)

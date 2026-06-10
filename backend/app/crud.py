@@ -375,3 +375,33 @@ def get_expense_statistics(db: Session, start_date: date, end_date: date):
             for m in month_stats
         ]
     }
+
+
+# ============== Bark Config CRUD ==============
+def get_bark_config(db: Session):
+    """获取 Bark 配置（只取第一条）"""
+    return db.query(models.BarkConfig).first()
+
+
+def create_bark_config(db: Session, config: schemas.BarkConfigCreate):
+    """创建 Bark 配置"""
+    # 先删除旧的
+    db.query(models.BarkConfig).delete()
+    db_config = models.BarkConfig(**config.model_dump())
+    db.add(db_config)
+    db.commit()
+    db.refresh(db_config)
+    return db_config
+
+
+def update_bark_config(db: Session, config: schemas.BarkConfigUpdate):
+    """更新 Bark 配置"""
+    db_config = get_bark_config(db)
+    if not db_config:
+        return None
+    update_data = config.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_config, key, value)
+    db.commit()
+    db.refresh(db_config)
+    return db_config

@@ -253,3 +253,27 @@ class InventoryWarning(BaseModel):
     weeks_remaining: Optional[Decimal]
     warning_weeks: Decimal
     needs_purchase: bool
+
+
+# ============== Bark Config Schemas ==============
+class BarkConfigBase(BaseModel):
+    bark_key: str = Field(..., min_length=1, max_length=255)
+    bark_server: Optional[str] = Field(default="https://api.day.app", max_length=255)
+
+
+class BarkConfigCreate(BarkConfigBase):
+    pass
+
+
+class BarkConfigUpdate(BaseModel):
+    bark_key: Optional[str] = Field(None, min_length=1, max_length=255)
+    bark_server: Optional[str] = Field(None, max_length=255)
+
+
+class BarkConfigResponse(BarkConfigBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

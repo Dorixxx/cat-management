@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from .database import engine, Base
-from .routers import cats, tasks, inventory, expenses
+from .routers import cats, tasks, inventory, expenses, bark_config
 from .services.scheduler import start_scheduler, shutdown_scheduler
 
 
@@ -20,8 +20,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="🐱 猫咪管理系统 API",
-    description="猫咪管理后端 API - 包含猫咪档案、任务提醒、库存管理、花费统计",
-    version="1.0.0",
+    description="猫咪管理后端 API - 包含猫咪档案、任务提醒、库存管理、花费统计、Bark 推送配置",
+    version="1.1.0",
     lifespan=lifespan
 )
 
@@ -39,6 +39,7 @@ app.include_router(cats.router, prefix="/api")
 app.include_router(tasks.router, prefix="/api")
 app.include_router(inventory.router, prefix="/api")
 app.include_router(expenses.router, prefix="/api")
+app.include_router(bark_config.router, prefix="/api")
 
 
 @app.get("/api/health")

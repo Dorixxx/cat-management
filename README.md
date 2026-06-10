@@ -8,6 +8,7 @@
 - **⏰ 任务提醒**：周期性任务、Bark 推送
 - **📦 库存管理**：分类、消耗、预警
 - **💰 花费统计**：分类/月度分析
+- **🔔 Bark 推送配置**：前端传入、数据库存储
 
 ## 配置
 
@@ -20,9 +21,17 @@ cp .env.example .env
 
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
-| `DATABASE_URL` | PostgreSQL 连接字符串 | `postgresql://postgres:postgres@localhost:5432/cat_management` |
-| `BARK_KEY` | Bark 推送密钥（可选） | 空 |
-| `BARK_SERVER` | Bark 服务器地址 | `https://api.day.app` |
+| `DATABASE_URL` | PostgreSQL 连接字符串 | Zeabur 自动注入 |
+
+## Bark 推送配置
+
+Bark 配置由前端传入，存储在数据库中：
+
+- **获取配置**：`GET /api/bark-config/`
+- **设置配置**：`POST /api/bark-config/` （body: `{bark_key, bark_server}`）
+- **更新配置**：`PUT /api/bark-config/`
+
+设置后，任务提醒和库存预警会自动通过 Bark 推送到手机。
 
 ## 快速启动
 
@@ -55,8 +64,8 @@ uvicorn app.main:app --reload
 2. 在 [Zeabur](https://zeabur.com) 选择 **Deploy from GitHub**
 3. 选择本仓库，Zeabur 会自动检测根目录 `Dockerfile` 并构建
 4. 添加 **PostgreSQL** 服务并绑定到后端服务（自动注入 `DATABASE_URL`）
-5. 如需 Bark 推送，在环境变量中添加 `BARK_KEY`
-6. 访问 `https://你的域名.zeabur.app/docs` 查看 API 文档
+5. 访问 `https://你的域名.zeabur.app/docs` 查看 API 文档
+6. 通过 `/api/bark-config/` 接口设置 Bark 推送配置
 
 ## API 文档
 
@@ -86,8 +95,9 @@ cat-management/
         │   ├── cats.py
         │   ├── tasks.py
         │   ├── inventory.py
-        │   └── expenses.py
+        │   ├── expenses.py
+        │   └── bark_config.py # Bark 推送配置
         └── services/
-            ├── bark.py        # Bark 推送
+            ├── bark.py        # Bark 推送（从数据库读取配置）
             └── scheduler.py   # 定时任务
 ```

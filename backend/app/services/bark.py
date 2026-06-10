@@ -1,16 +1,28 @@
 import requests
 
-from .config import settings
+from ..database import SessionLocal
+from .. import crud
+
+
+def get_bark_config():
+    """从数据库获取 Bark 配置"""
+    db = SessionLocal()
+    try:
+        config = crud.get_bark_config(db)
+        return config
+    finally:
+        db.close()
 
 
 def send_notification(title: str, body: str, url: str = None, sound: str = "bell") -> bool:
     """发送 Bark 推送通知到手机"""
-    if not settings.BARK_KEY:
-        print("[Bark] 未配置 BARK_KEY，跳过推送")
+    config = get_bark_config()
+    if not config or not config.bark_key:
+        print("[Bark] 未配置 Bark 推送，跳过")
         return False
     
     try:
-        push_url = f"{settings.BARK_SERVER}/{settings.BARK_KEY}/{title}/{body}"
+        push_url = f"{config.bark_server}/{config.bark_key}/{title}/{body}"
         params = {"sound": sound}
         if url:
             params["url"] = url
