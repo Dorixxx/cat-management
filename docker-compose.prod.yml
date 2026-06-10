@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cat_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cat_management
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cat_network
+
+  backend:
+    build: ./backend
+    container_name: cat_backend
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/cat_management
+      BARK_KEY: ${BARK_KEY:-}
+      BARK_SERVER: ${BARK_SERVER:-https://api.day.app}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - cat_network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: cat_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+    networks:
+      - cat_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  cat_network:
+    driver: bridge
