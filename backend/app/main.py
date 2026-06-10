@@ -1,5 +1,10 @@
-from fastapi import FastAPI
+import os
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
 from .database import engine, Base, ensure_schema_updates
@@ -46,3 +51,23 @@ app.include_router(bark_config.router, prefix="/api")
 @app.get("/api/health")
 def health_check():
     return {"status": "ok", "message": "猫咪管理系统 API 运行中 🐱"}
+
+
+default_static_dir = Path(__file__).resolve().parent.parent / "static"
+frontend_dist = Path(os.getenv("FRONTEND_DIST", str(default_static_dir)))
+
+if frontend_dist.exists():
+    assets_dir = frontend_dist / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def serve_frontend(full_path: str):
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="API endpoint not found")
+
+        requested_file = frontend_dist / full_path
+        if requested_file.is_file():
+            return FileResponse(requested_file)
+
+        return FileResponse(frontend_dist / "index.html")

@@ -30,14 +30,14 @@ cat-management/
 │       ├── routers/             # API 路由
 │       └── services/            # Bark 和定时任务
 ├── frontend/
-│   ├── server.ts                # Express + Vite，本地代理 /api/*
+│   ├── server.ts                # 本地开发代理，可选
 │   ├── package.json
 │   ├── vite.config.ts
 │   └── src/
 │       ├── App.tsx
 │       ├── components/
 │       └── utils/
-├── Dockerfile                   # 后端容器构建
+├── Dockerfile                   # 单服务构建：前端静态资源 + 后端 API
 ├── docker-compose.prod.yml
 ├── .env.example                 # 后端环境变量
 └── README.md
@@ -67,7 +67,7 @@ npm install
 npm run dev
 ```
 
-默认前端地址是 `http://127.0.0.1:3000`，`/api/*` 会代理到 `BACKEND_BASE_URL`。
+默认前端地址是 `http://127.0.0.1:3000`，本地开发时 `/api/*` 会代理到 `BACKEND_BASE_URL`。
 
 ## 环境变量
 
@@ -77,12 +77,36 @@ npm run dev
 | --- | --- | --- |
 | `DATABASE_URL` | PostgreSQL 连接字符串 | `postgresql://postgres:postgres@localhost:5432/cat_management` |
 
-前端 `frontend/.env`：
+前端 `frontend/.env` 只用于本地开发代理：
 
 | 变量 | 说明 | 默认值 |
 | --- | --- | --- |
 | `PORT` | 前端 Express/Vite 服务端口 | `3000` |
 | `BACKEND_BASE_URL` | 前端代理转发目标 | `http://127.0.0.1:8000` |
+
+## Zeabur 部署
+
+推荐单服务部署：
+
+```text
+Zeabur Project
+├── PostgreSQL
+└── cat-management app
+```
+
+应用服务使用仓库根目录的 `Dockerfile`。构建时会先执行 `frontend` 的 Vite build，再把 `frontend/dist` 放进后端镜像，由 FastAPI 同时托管前端页面和 `/api/*` 接口。
+
+Zeabur 上只需要给应用服务配置数据库环境变量：
+
+```bash
+DATABASE_URL=你的 PostgreSQL 连接串
+```
+
+如果 Zeabur 注入的是 `POSTGRES_*` 或 `PG*` 变量，后端也会尝试自动组装连接串。部署后访问：
+
+- `/`：前端页面
+- `/api/health`：后端健康检查
+- `/docs`：Swagger API 文档
 
 ## API
 
@@ -114,4 +138,4 @@ cp .env.example .env
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-Compose 会启动 PostgreSQL 和后端服务。前端仍建议单独在 `frontend/` 启动或按部署平台独立配置。
+Compose 会启动 PostgreSQL 和单服务应用，前端页面和后端 API 都由后端容器提供。

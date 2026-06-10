@@ -1,0 +1,15 @@
+.git
+.env
+*.log
+
+backend/venv
+backend/__pycache__
+backend/app/__pycache__
+backend/app/**/__pycache__
+
+frontend/node_modules
+frontend/dist
+frontend/.env
+frontend/.env.local
+
+.DS_Store
