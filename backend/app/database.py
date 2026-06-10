@@ -50,6 +50,8 @@ def ensure_schema_updates():
         "completed_count": "INTEGER DEFAULT 0",
         "linked_item_id": "INTEGER",
         "linked_item_quantity": "NUMERIC(10, 2) DEFAULT 0",
+        "schedule_type": "VARCHAR(20) DEFAULT 'interval'",
+        "cron_expression": "VARCHAR(100)",
     })
 
     if statements:

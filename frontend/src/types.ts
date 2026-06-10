@@ -41,6 +41,8 @@ export interface RoutineTask {
   catId: string; // Specific cat ID, or 'All' for general tasks
   title: string;
   intervalDays: number; // interval in days, e.g. 7 for weekly, 30 for monthly, 90 for quarterly
+  scheduleType: 'temporary' | 'interval' | 'cron';
+  cronExpression: string;
   lastCompletedDate: string | null; // YYYY-MM-DD
   nextDueDate: string; // YYYY-MM-DDTHH:mm
   completionTarget: number;

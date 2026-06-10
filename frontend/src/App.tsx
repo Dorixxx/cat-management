@@ -549,7 +549,7 @@ export default function App() {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(260px,320px))] gap-6 justify-center sm:justify-start">
                     {cats.map(cat => (
                       <CatCard
                         key={cat.id}

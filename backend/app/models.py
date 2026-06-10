@@ -46,6 +46,8 @@ class Task(Base):
     description = Column(Text)
     task_type = Column(String(50), nullable=False)  # 剪指甲/驱虫/洗澡/喂食/自定义
     frequency_days = Column(Integer, default=0)  # 0表示一次性任务
+    schedule_type = Column(String(20), default="interval")  # temporary/interval/cron
+    cron_expression = Column(String(100))
     next_due_date = Column(DateTime, nullable=False)
     reminder_minutes = Column(Integer, default=30)  # 提前提醒分钟数
     completion_target = Column(Integer, default=0)  # 0 表示不限次数

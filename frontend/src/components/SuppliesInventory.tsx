@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { SupplyItem, InventoryCategory } from '../types';
-import { Package, Plus, Trash2, Edit3, PenTool, X, AlertTriangle } from 'lucide-react';
+import { Package, Plus, Trash2, Edit3, PenTool, X, AlertTriangle, FolderPlus } from 'lucide-react';
 
 interface SuppliesInventoryProps {
   supplies: SupplyItem[];
@@ -10,6 +10,8 @@ interface SuppliesInventoryProps {
   onUpdateSupply: (item: SupplyItem) => void;
   onDeleteSupply: (id: string) => void;
 }
+
+const UNIT_OPTIONS = ['kg', 'g', 'L', 'ml', '袋', '罐', '盒', '瓶', '片', '支', '件', '包', '卷'];
 
 export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
   supplies,
@@ -23,10 +25,11 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState<string | null>(null);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [categoryNameDraft, setCategoryNameDraft] = useState('');
 
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [newCategoryName, setNewCategoryName] = useState('');
   const [stockAmount, setStockAmount] = useState<number>(1);
   const [unit, setUnit] = useState('kg');
   const [minThreshold, setMinThreshold] = useState<number>(0.5);
@@ -62,26 +65,32 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
     return item.stockAmount / item.dailyConsumption;
   };
 
-  const resolveCategory = async () => {
-    if (newCategoryName.trim()) {
-      const created = await onAddCategory(newCategoryName.trim());
-      return created;
+  const handleCreateCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const categoryName = categoryNameDraft.trim();
+    if (!categoryName) return;
+
+    const created = await onAddCategory(categoryName);
+    if (created) {
+      setCategoryId(created.id);
+      setSelectedCategory(created.id);
     }
-    return categoryId ? categoryLookup.get(categoryId) || null : null;
+    setCategoryNameDraft('');
+    setShowCategoryModal(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
-    const selected = await resolveCategory();
+    const selected = categoryId ? categoryLookup.get(categoryId) || null : null;
     const payload = {
       name: name.trim(),
       categoryId: selected?.id || null,
-      categoryName: selected?.name || newCategoryName.trim() || '未分类',
+      categoryName: selected?.name || '未分类',
       categoryIcon: selected?.icon || '📦',
       stockAmount: Number(stockAmount),
-      unit: unit.trim() || '件',
+      unit: unit || '件',
       minThreshold: Number(minThreshold),
       dailyConsumption: Number(dailyConsumption),
       productionDate,
@@ -106,7 +115,6 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
     setIsEditing(item.id);
     setName(item.name);
     setCategoryId(item.categoryId || '');
-    setNewCategoryName('');
     setStockAmount(item.stockAmount);
     setUnit(item.unit);
     setMinThreshold(item.minThreshold);
@@ -122,7 +130,6 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
     setIsEditing(null);
     setName('');
     setCategoryId('');
-    setNewCategoryName('');
     setStockAmount(1);
     setUnit('kg');
     setMinThreshold(0.5);
@@ -171,6 +178,13 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
               {category.icon} {category.name}
             </button>
           ))}
+          <button
+            onClick={() => setShowCategoryModal(true)}
+            className="text-[10px] font-bold px-3 py-1.5 rounded-md flex items-center gap-1 transition-all cursor-pointer bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200"
+          >
+            <FolderPlus size={11} strokeWidth={2.5} />
+            <span>新建分类</span>
+          </button>
           <button
             onClick={() => setShowForm(true)}
             className="text-[10px] font-bold px-3 py-1.5 rounded-md flex items-center gap-1 transition-all shadow-xs cursor-pointer bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-200/50"
@@ -272,39 +286,115 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <input type="text" placeholder="用品/商品名称" value={name} required onChange={(e) => setName(e.target.value)} className="w-full text-xs font-medium rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" />
+              <div>
+                <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">用品名称 *</label>
+                <input type="text" placeholder="例如：幼猫粮、膨润土猫砂、益生菌" value={name} required onChange={(e) => setName(e.target.value)} className="w-full text-xs font-medium rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" />
+              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">物品分类</label>
+                  <button type="button" onClick={() => setShowCategoryModal(true)} className="text-[10px] font-bold text-amber-700 hover:text-amber-900 flex items-center gap-1 cursor-pointer">
+                    <FolderPlus size={11} />
+                    新建分类
+                  </button>
+                </div>
+                <select
+                  value={categoryId}
+                  onChange={(e) => {
+                    if (e.target.value === '__new_category__') {
+                      setShowCategoryModal(true);
+                      return;
+                    }
+                    setCategoryId(e.target.value);
+                  }}
+                  className="w-full text-xs font-bold rounded-lg border border-stone-200 py-2.5 px-2 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition"
+                >
+                  <option value="">未分类</option>
+                  {categories.map(category => <option key={category.id} value={category.id}>{category.icon} {category.name}</option>)}
+                  <option value="__new_category__">+ 新建分类...</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
                 <div>
-                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">已有分类</label>
-                  <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="w-full text-xs font-bold rounded-lg border border-stone-200 py-2.5 px-2 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition">
-                    <option value="">未分类 / 使用新分类</option>
-                    {categories.map(category => <option key={category.id} value={category.id}>{category.icon} {category.name}</option>)}
+                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">当前库存 *</label>
+                  <input type="number" step="0.01" min="0" value={stockAmount} required onChange={(e) => setStockAmount(Math.max(0, Number(e.target.value)))} className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" placeholder="在库量" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">存储单位 *</label>
+                  <select value={unit} required onChange={(e) => setUnit(e.target.value)} className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-2 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition">
+                    {unit && !UNIT_OPTIONS.includes(unit) && <option value={unit}>{unit}</option>}
+                    {UNIT_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">新分类名称</label>
-                  <input type="text" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="例如：处方粮、药品、清洁用品" className="w-full text-xs font-medium rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" />
+                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">库存警戒线 *</label>
+                  <input type="number" step="0.01" min="0" value={minThreshold} required onChange={(e) => setMinThreshold(Math.max(0, Number(e.target.value)))} className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" placeholder="低于此值提醒" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">每日消耗量</label>
+                  <input type="number" step="0.01" min="0" value={dailyConsumption} onChange={(e) => setDailyConsumption(Math.max(0, Number(e.target.value)))} className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" placeholder="用于估算剩余天数" />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
-                <input type="number" step="0.01" min="0" value={stockAmount} required onChange={(e) => setStockAmount(Math.max(0, Number(e.target.value)))} className="text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" placeholder="在库量" />
-                <input type="text" value={unit} required onChange={(e) => setUnit(e.target.value)} className="text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" placeholder="单位 kg/g/袋" />
-                <input type="number" step="0.01" min="0" value={minThreshold} required onChange={(e) => setMinThreshold(Math.max(0, Number(e.target.value)))} className="text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" placeholder="警戒线" />
-                <input type="number" step="0.01" min="0" value={dailyConsumption} onChange={(e) => setDailyConsumption(Math.max(0, Number(e.target.value)))} className="text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" placeholder="每日消耗" />
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                <input type="date" value={productionDate} onChange={(e) => setProductionDate(e.target.value)} className="text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" />
-                <input type="number" min="0" value={shelfLifeDays} onChange={(e) => setShelfLifeDays(Math.max(0, Number(e.target.value)))} className="text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" placeholder="保质期天数" />
+                <div>
+                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">生产日期</label>
+                  <input type="date" value={productionDate} onChange={(e) => setProductionDate(e.target.value)} className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" />
+                  <p className="mt-1 text-[10px] text-stone-400">食品、药品可填写，用于计算临期提醒。</p>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">保质期天数</label>
+                  <input type="number" min="0" value={shelfLifeDays} onChange={(e) => setShelfLifeDays(Math.max(0, Number(e.target.value)))} className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" placeholder="例如：540" />
+                  <p className="mt-1 text-[10px] text-stone-400">系统会结合设置页的临期提前天数提醒。</p>
+                </div>
               </div>
 
-              <textarea placeholder="采购备注 / 喂食方法" value={note} onChange={(e) => setNote(e.target.value)} className="w-full text-xs font-medium rounded-lg border border-stone-200 py-2 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition h-16 resize-none" />
+              <div>
+                <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">备注</label>
+                <textarea placeholder="采购备注 / 喂食方法" value={note} onChange={(e) => setNote(e.target.value)} className="w-full text-xs font-medium rounded-lg border border-stone-200 py-2 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition h-16 resize-none" />
+              </div>
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={resetForm} className="flex-1 border border-stone-200 text-stone-600 hover:bg-stone-50 rounded-xl py-2.5 text-xs font-bold transition cursor-pointer">取消</button>
                 <button type="submit" className="flex-1 bg-stone-950 hover:bg-stone-850 text-white rounded-xl py-2.5 text-xs font-bold transition cursor-pointer">{isEditing ? '保存修改' : '确认入库'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl border border-stone-100 p-5 shadow-xl text-stone-700 text-xs font-sans w-full max-w-sm animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3 mb-4">
+              <h3 className="font-extrabold text-stone-900 text-sm flex items-center gap-1.5 uppercase tracking-wide">
+                <FolderPlus size={14} className="text-amber-600" />
+                新建物品分类
+              </h3>
+              <button onClick={() => setShowCategoryModal(false)} className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition">
+                <X size={14} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCategory} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">分类名称 *</label>
+                <input
+                  type="text"
+                  value={categoryNameDraft}
+                  required
+                  autoFocus
+                  onChange={(e) => setCategoryNameDraft(e.target.value)}
+                  placeholder="例如：处方粮、药品、清洁用品"
+                  className="w-full text-xs font-medium rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <button type="button" onClick={() => setShowCategoryModal(false)} className="flex-1 border border-stone-200 text-stone-600 hover:bg-stone-50 rounded-xl py-2.5 text-xs font-bold transition cursor-pointer">取消</button>
+                <button type="submit" className="flex-1 bg-stone-950 hover:bg-stone-850 text-white rounded-xl py-2.5 text-xs font-bold transition cursor-pointer">保存分类</button>
               </div>
             </form>
           </div>

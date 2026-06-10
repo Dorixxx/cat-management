@@ -66,6 +66,8 @@ class TaskBase(BaseModel):
     description: Optional[str] = None
     task_type: str = Field(..., min_length=1, max_length=50)
     frequency_days: int = Field(default=0, ge=0)
+    schedule_type: str = Field(default="interval", pattern="^(temporary|interval|cron)$")
+    cron_expression: Optional[str] = Field(default=None, max_length=100)
     next_due_date: datetime
     reminder_minutes: int = Field(default=30, ge=0)
     completion_target: int = Field(default=0, ge=0)
@@ -83,6 +85,8 @@ class TaskUpdate(BaseModel):
     description: Optional[str] = None
     task_type: Optional[str] = None
     frequency_days: Optional[int] = Field(None, ge=0)
+    schedule_type: Optional[str] = Field(None, pattern="^(temporary|interval|cron)$")
+    cron_expression: Optional[str] = Field(None, max_length=100)
     next_due_date: Optional[datetime] = None
     reminder_minutes: Optional[int] = Field(None, ge=0)
     completion_target: Optional[int] = Field(None, ge=0)

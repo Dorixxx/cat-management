@@ -7,6 +7,129 @@ from decimal import Decimal
 from . import models, schemas
 
 
+CRON_DOW_NAMES = {
+    "sun": 0,
+    "mon": 1,
+    "tue": 2,
+    "wed": 3,
+    "thu": 4,
+    "fri": 5,
+    "sat": 6,
+}
+
+
+def _coerce_cron_value(raw: str, names: Optional[dict] = None, allow_sunday_7: bool = False) -> int:
+    value = raw.strip().lower()
+    if names and value in names:
+        return names[value]
+    parsed = int(value)
+    if allow_sunday_7 and parsed == 7:
+        return 0
+    return parsed
+
+
+def _parse_cron_field(
+    raw: str,
+    minimum: int,
+    maximum: int,
+    names: Optional[dict] = None,
+    allow_sunday_7: bool = False,
+):
+    raw = raw.strip().lower()
+    if raw == "*":
+        return None
+
+    values = set()
+    for part in raw.split(","):
+        part = part.strip()
+        if not part:
+            continue
+
+        step = 1
+        if "/" in part:
+            part, step_raw = part.split("/", 1)
+            step = max(1, int(step_raw))
+
+        if part == "*":
+            start, end = minimum, maximum
+        elif "-" in part:
+            start_raw, end_raw = part.split("-", 1)
+            start = _coerce_cron_value(start_raw, names, allow_sunday_7)
+            end = _coerce_cron_value(end_raw, names, allow_sunday_7)
+        else:
+            value = _coerce_cron_value(part, names, allow_sunday_7)
+            if minimum <= value <= maximum:
+                values.add(value)
+            continue
+
+        if start > end:
+            start, end = end, start
+        for value in range(start, end + 1, step):
+            if minimum <= value <= maximum:
+                values.add(value)
+
+    return values
+
+
+def _parse_cron_expression(expression: str):
+    parts = expression.split()
+    if len(parts) != 5:
+        return None
+    minute, hour, day_of_month, month, day_of_week = parts
+    return {
+        "minute": _parse_cron_field(minute, 0, 59),
+        "hour": _parse_cron_field(hour, 0, 23),
+        "day_of_month": _parse_cron_field(day_of_month, 1, 31),
+        "month": _parse_cron_field(month, 1, 12),
+        "day_of_week": _parse_cron_field(day_of_week, 0, 6, CRON_DOW_NAMES, allow_sunday_7=True),
+    }
+
+
+def _cron_matches(candidate: datetime, parsed_cron: dict) -> bool:
+    standard_day_of_week = (candidate.weekday() + 1) % 7
+    checks = (
+        ("minute", candidate.minute),
+        ("hour", candidate.hour),
+        ("month", candidate.month),
+    )
+    for key, value in checks:
+        allowed = parsed_cron[key]
+        if allowed is not None and value not in allowed:
+            return False
+
+    day_of_month = parsed_cron["day_of_month"]
+    day_of_week = parsed_cron["day_of_week"]
+    matches_month_day = day_of_month is None or candidate.day in day_of_month
+    matches_week_day = day_of_week is None or standard_day_of_week in day_of_week
+
+    if day_of_month is None and day_of_week is None:
+        return True
+    if day_of_month is None:
+        return matches_week_day
+    if day_of_week is None:
+        return matches_month_day
+    return matches_month_day or matches_week_day
+
+
+def get_next_due_from_cron(expression: Optional[str], from_time: datetime) -> Optional[datetime]:
+    if not expression:
+        return None
+    try:
+        parsed_cron = _parse_cron_expression(expression)
+        if not parsed_cron:
+            return None
+    except (TypeError, ValueError):
+        return None
+
+    candidate = from_time.replace(second=0, microsecond=0) + timedelta(minutes=1)
+    deadline = candidate + timedelta(days=732)
+    while candidate <= deadline:
+        if _cron_matches(candidate, parsed_cron):
+            return candidate
+        candidate += timedelta(minutes=1)
+    return None
+
+
 # ============== Cat CRUD ==============
 def get_cat(db: Session, cat_id: int):
     return db.query(models.Cat).filter(models.Cat.id == cat_id).first()
@@ -145,7 +268,14 @@ def complete_task(db: Session, task_id: int, completion: Optional[schemas.TaskCo
     db.add(db_completion)
     db_task.completed_count = (db_task.completed_count or 0) + 1
 
-    if db_task.frequency_days > 0:
+    schedule_type = db_task.schedule_type or ("interval" if db_task.frequency_days > 0 else "temporary")
+    next_cron_due = None
+    if schedule_type == "cron":
+        next_cron_due = get_next_due_from_cron(db_task.cron_expression, completed_at)
+
+    if next_cron_due:
+        db_task.next_due_date = next_cron_due
+    elif db_task.frequency_days > 0:
         # 周期性任务，更新下次到期时间
         db_task.next_due_date = completed_at + timedelta(days=db_task.frequency_days)
     else:
