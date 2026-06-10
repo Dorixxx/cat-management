@@ -11,7 +11,7 @@ export const getApiConfig = (): ApiConfig => {
 };
 
 export const saveApiConfig = (config: ApiConfig): void => {
-  // API traffic is proxied by frontend/server.ts; runtime changes are not needed here.
+  // API traffic is same-origin in production and proxied by Vite during local development.
 };
 
 // Internal API path helper

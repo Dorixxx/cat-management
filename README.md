@@ -30,7 +30,6 @@ cat-management/
 │       ├── routers/             # API 路由
 │       └── services/            # Bark 和定时任务
 ├── frontend/
-│   ├── server.ts                # 本地开发代理，可选
 │   ├── package.json
 │   ├── vite.config.ts
 │   └── src/
@@ -67,7 +66,7 @@ npm install
 npm run dev
 ```
 
-默认前端地址是 `http://127.0.0.1:3000`，本地开发时 `/api/*` 会代理到 `BACKEND_BASE_URL`。
+默认前端地址是 `http://127.0.0.1:5173`，本地开发时 Vite 会把 `/api/*` 代理到 `BACKEND_BASE_URL`。
 
 ## 环境变量
 
@@ -81,7 +80,7 @@ npm run dev
 
 | 变量 | 说明 | 默认值 |
 | --- | --- | --- |
-| `PORT` | 前端 Express/Vite 服务端口 | `3000` |
+| `PORT` | Vite 预览服务端口 | `3000` |
 | `BACKEND_BASE_URL` | 前端代理转发目标 | `http://127.0.0.1:8000` |
 
 ## Zeabur 部署
