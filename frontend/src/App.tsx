@@ -161,63 +161,28 @@ export default function App() {
         setIsEditCatOpen(false);
         return;
       } catch (e) {
-        console.error("API updateCat failed, fallback to local:", e);
+        console.error("API updateCat failed:", e);
+        alert('猫咪档案保存失败，数据没有写入数据库。请检查后端服务或数据库连接后再试。');
+        return;
       }
-
-      // Modify existing cat locally
-      setCats(prev => prev.map(c => c.id === selectedCatId ? { ...c, ...catData } : c));
-      
-      // Also write down a weight record matching this date if we changed its current weight index
-      const todayString = new Date().toISOString().split('T')[0];
-      const hasRecordToday = weightRecords.some(w => w.catId === selectedCatId && w.date === todayString);
-      if (!hasRecordToday) {
-        let weightRecordId = `w-${Date.now()}`;
-        try {
-          const backendWeightId = await apiClient.createWeight(selectedCatId, catData.weight, todayString);
-          if (backendWeightId) weightRecordId = backendWeightId;
-        } catch (e) {
-          console.error("API createWeight on cat update failed:", e);
-        }
-        setWeightRecords(prev => [...prev, {
-          id: weightRecordId,
-          catId: selectedCatId,
-          date: todayString,
-          weight: catData.weight
-        }]);
-      }
-      setIsEditCatOpen(false);
     } else {
       // Create new cat
       try {
         const newId = await apiClient.createCat(catData);
         if (newId) {
-          await apiClient.createWeight(newId, catData.weight, new Date().toISOString().split('T')[0]);
+          try {
+            await apiClient.createWeight(newId, catData.weight, new Date().toISOString().split('T')[0]);
+          } catch (weightError) {
+            console.error("API createWeight after createCat failed:", weightError);
+          }
         }
         await syncAllFromBackend();
         setIsAddCatOpen(false);
         return;
       } catch (e) {
-        console.error("API createCat failed, falling back to local:", e);
+        console.error("API createCat failed:", e);
+        alert('猫咪档案创建失败，数据没有写入数据库。请检查后端服务或数据库连接后再试。');
       }
-
-      let newId = `cat-${Date.now()}`;
-      const newCat: Cat = {
-        id: newId,
-        ...catData,
-        createdAt: new Date().toISOString(),
-      };
-      setCats(prev => [newCat, ...prev]);
-
-      // Create initial weight capture
-      let initWeightId = `w-${Date.now()}-init`;
-      setWeightRecords(prev => [...prev, {
-        id: initWeightId,
-        catId: newId,
-        date: new Date().toISOString().split('T')[0],
-        weight: catData.weight
-      }]);
-
-      setIsAddCatOpen(false);
     }
   };
 

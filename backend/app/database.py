@@ -54,6 +54,17 @@ def ensure_schema_updates():
         "cron_expression": "VARCHAR(100)",
     })
 
+    if "cats" in table_names:
+        avatar_column = next(
+            (column for column in inspector.get_columns("cats") if column["name"] == "avatar"),
+            None,
+        )
+        if avatar_column and avatar_column["type"].__class__.__name__.lower().startswith("varchar"):
+            if engine.dialect.name == "postgresql":
+                statements.append("ALTER TABLE cats ALTER COLUMN avatar TYPE TEXT")
+            elif engine.dialect.name in {"mysql", "mariadb"}:
+                statements.append("ALTER TABLE cats MODIFY avatar TEXT")
+
     if statements:
         with engine.begin() as connection:
             for statement in statements:

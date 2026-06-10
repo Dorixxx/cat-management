@@ -35,7 +35,7 @@ export const AddEditCatModal: React.FC<AddEditCatModalProps> = ({
       ageMonths: 0,
       gender,
       weight: parseFloat(weight) || 4.0,
-      avatarUrl: avatarUrl.trim() || DEFAULT_CAT_AVATAR,
+      avatarUrl: avatarUrl.trim(),
       description: description.trim(),
     });
   };

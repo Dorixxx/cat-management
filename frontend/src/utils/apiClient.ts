@@ -80,7 +80,7 @@ export const apiClient = {
       birthday: cat.birthday || calculateBirthday(cat.ageYears, cat.ageMonths),
       weight: cat.weight,
       color: null,
-      avatar: cat.avatarUrl,
+      avatar: cat.avatarUrl || null,
       notes: cat.description
     };
     const response = await apiFetch('/cats/', {
@@ -98,7 +98,7 @@ export const apiClient = {
       birthday: cat.birthday || calculateBirthday(cat.ageYears, cat.ageMonths),
       weight: cat.weight,
       color: null,
-      avatar: cat.avatarUrl,
+      avatar: cat.avatarUrl || null,
       notes: cat.description
     };
     await apiFetch(`/cats/${id}`, {

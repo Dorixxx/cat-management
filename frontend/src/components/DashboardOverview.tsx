@@ -1,6 +1,6 @@
 import React from 'react';
 import { Cat as CatType, SupplyItem, RoutineTask, WeightRecord } from '../types';
-import { Cat, Package, CalendarClock, AlertTriangle, CheckCircle2, TrendingUp, Info } from 'lucide-react';
+import { Cat, Package, CalendarClock, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 interface DashboardOverviewProps {
   cats: CatType[];
@@ -262,21 +262,6 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
       </div>
 
-      {/* 3. Helpful Guidelines Section on Overview tab */}
-      <div className="bg-stone-900 text-white rounded-2xl p-5 shadow-xs relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="z-10">
-          <h3 className="text-stone-100 font-bold text-xs flex items-center gap-1.5 leading-none">
-            <TrendingUp size={13} className="text-amber-400 stroke-[2.5]" />
-            养猫省心行动指标推荐
-          </h3>
-          <p className="text-[10px] text-stone-300 font-sans mt-2 max-w-2xl leading-relaxed">
-            💡 <strong>物资指南</strong>：建议常备猫粮及膨润土猫砂，库存分别在 “下限触发报警值” 对应 <strong>1袋 / 1盒</strong> 时通过系统快捷按 “+” 补载，保持生活物资稳定充足，科学养宠更高效。
-          </p>
-        </div>
-        <div className="text-[10px] text-stone-400 border border-stone-800 rounded-lg p-2 shrink-0 bg-stone-950/20">
-          📍 数据完全存储于浏览器本地缓存
-        </div>
-      </div>
     </div>
   );
 };
