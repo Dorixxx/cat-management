@@ -1,21 +1,16 @@
 import requests
-import os
-from dotenv import load_dotenv
 
-load_dotenv()
-
-BARK_KEY = os.getenv("BARK_KEY", "")
-BARK_SERVER = os.getenv("BARK_SERVER", "https://api.day.app")
+from .config import settings
 
 
 def send_notification(title: str, body: str, url: str = None, sound: str = "bell") -> bool:
     """发送 Bark 推送通知到手机"""
-    if not BARK_KEY:
+    if not settings.BARK_KEY:
         print("[Bark] 未配置 BARK_KEY，跳过推送")
         return False
     
     try:
-        push_url = f"{BARK_SERVER}/{BARK_KEY}/{title}/{body}"
+        push_url = f"{settings.BARK_SERVER}/{settings.BARK_KEY}/{title}/{body}"
         params = {"sound": sound}
         if url:
             params["url"] = url

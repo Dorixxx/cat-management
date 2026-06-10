@@ -19,12 +19,10 @@ services:
       - cat_network
 
   backend:
-    build: ./backend
+    build: .
     container_name: cat_backend
-    environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/cat_management
-      BARK_KEY: ${BARK_KEY:-}
-      BARK_SERVER: ${BARK_SERVER:-https://api.day.app}
+    env_file:
+      - .env
     ports:
       - "8000:8000"
     depends_on:
