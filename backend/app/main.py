@@ -1,9 +1,6 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-import os
 
 from .database import engine, Base
 from .routers import cats, tasks, inventory, expenses
@@ -22,13 +19,13 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="🐱 猫咪管理系统",
-    description="管理你的猫咪信息、任务提醒、库存和花费统计",
+    title="🐱 猫咪管理系统 API",
+    description="猫咪管理后端 API - 包含猫咪档案、任务提醒、库存管理、花费统计",
     version="1.0.0",
     lifespan=lifespan
 )
 
-# CORS
+# CORS - 允许所有来源访问 API
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -37,28 +34,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 注册路由（加 /api 前缀）
+# 注册路由
 app.include_router(cats.router, prefix="/api")
 app.include_router(tasks.router, prefix="/api")
 app.include_router(inventory.router, prefix="/api")
 app.include_router(expenses.router, prefix="/api")
 
-# API 健康检查
+
 @app.get("/api/health")
 def health_check():
-    return {"status": "ok", "message": "猫咪管理系统运行中 🐱"}
-
-# 静态文件（前端资源）
-static_dir = os.path.join(os.path.dirname(__file__), "static")
-app.mount("/css", StaticFiles(directory=os.path.join(static_dir, "css")), name="css")
-app.mount("/js", StaticFiles(directory=os.path.join(static_dir, "js")), name="js")
-
-# SPA fallback - 所有非 API/静态资源请求返回 index.html
-@app.get("/{path:path}")
-async def serve_spa(path: str):
-    if path.startswith("api/") or path.startswith("css/") or path.startswith("js/"):
-        raise HTTPException(status_code=404)
-    index_path = os.path.join(static_dir, "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    raise HTTPException(status_code=404, detail="index.html not found")
+    return {"status": "ok", "message": "猫咪管理系统 API 运行中 🐱"}
