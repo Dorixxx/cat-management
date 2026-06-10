@@ -157,6 +157,25 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ onNotifySave }) =>
                   </span>
                 </div>
               </label>
+
+              <div className="pt-3 border-t border-stone-100">
+                <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1.5">
+                  食物 / 药品临期提前提醒
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    value={config.expiryWarningDays}
+                    onChange={(e) => setConfig({ ...config, expiryWarningDays: Math.max(0, Number(e.target.value)) })}
+                    className="w-24 text-xs font-mono font-bold rounded-lg border border-stone-200 py-2 px-3 bg-white focus:border-amber-400 outline-hidden"
+                  />
+                  <span className="text-xs text-stone-500 font-semibold">天</span>
+                </div>
+                <span className="text-[10px] text-stone-400 font-sans block mt-1">
+                  默认 7 天。库存物品未单独设置时，会使用这里的统一提醒提前量。
+                </span>
+              </div>
             </div>
           </div>
 

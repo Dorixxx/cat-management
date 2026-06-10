@@ -62,11 +62,11 @@ export const apiClient = {
       name: cat.name,
       breed: cat.breed || '混血/未知',
       gender: genderToFrontend(cat.gender),
+      birthday: cat.birthday || '',
       ageYears: cat.birthday ? calculateAge(cat.birthday).years : 0,
       ageMonths: cat.birthday ? calculateAge(cat.birthday).months : 0,
       weight: Number(cat.weight || 0),
-      avatarUrl: cat.avatar || 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=150',
-      guardian: cat.color || '守护者',
+      avatarUrl: cat.avatar || '',
       description: cat.notes || '',
       createdAt: cat.created_at || new Date().toISOString()
     }));
@@ -77,9 +77,9 @@ export const apiClient = {
       name: cat.name,
       gender: genderToBackend(cat.gender),
       breed: cat.breed,
-      birthday: calculateBirthday(cat.ageYears, cat.ageMonths),
+      birthday: cat.birthday || calculateBirthday(cat.ageYears, cat.ageMonths),
       weight: cat.weight,
-      color: cat.guardian,
+      color: null,
       avatar: cat.avatarUrl,
       notes: cat.description
     };
@@ -95,9 +95,9 @@ export const apiClient = {
       name: cat.name,
       gender: genderToBackend(cat.gender),
       breed: cat.breed,
-      birthday: calculateBirthday(cat.ageYears, cat.ageMonths),
+      birthday: cat.birthday || calculateBirthday(cat.ageYears, cat.ageMonths),
       weight: cat.weight,
-      color: cat.guardian,
+      color: null,
       avatar: cat.avatarUrl,
       notes: cat.description
     };
@@ -157,7 +157,11 @@ export const apiClient = {
       title: t.title,
       intervalDays: t.frequency_days,
       lastCompletedDate: null,
-      nextDueDate: t.next_due_date ? t.next_due_date.split('T')[0] : new Date().toISOString().split('T')[0],
+      nextDueDate: t.next_due_date ? toLocalDateTimeInput(t.next_due_date) : toLocalDateTimeInput(new Date().toISOString()),
+      completionTarget: Number(t.completion_target || 0),
+      completedCount: Number(t.completed_count || 0),
+      linkedItemId: t.linked_item_id ? String(t.linked_item_id) : '',
+      linkedItemQuantity: Number(t.linked_item_quantity || 0),
       note: t.description || ''
     }));
   },
@@ -168,8 +172,11 @@ export const apiClient = {
       description: task.note,
       task_type: 'Care',
       frequency_days: task.intervalDays,
-      next_due_date: task.nextDueDate ? `${task.nextDueDate}T09:00:00` : new Date().toISOString(),
+      next_due_date: task.nextDueDate ? new Date(task.nextDueDate).toISOString() : new Date().toISOString(),
       reminder_minutes: 30,
+      completion_target: task.completionTarget || 0,
+      linked_item_id: task.linkedItemId ? Number(task.linkedItemId) : null,
+      linked_item_quantity: task.linkedItemQuantity || 0,
       bark_enabled: true,
       cat_id: task.catId === 'all' ? null : Number(task.catId)
     };
@@ -186,7 +193,10 @@ export const apiClient = {
       description: task.note,
       task_type: 'Care',
       frequency_days: task.intervalDays,
-      next_due_date: task.nextDueDate ? `${task.nextDueDate}T09:00:00` : new Date().toISOString(),
+      next_due_date: task.nextDueDate ? new Date(task.nextDueDate).toISOString() : new Date().toISOString(),
+      completion_target: task.completionTarget || 0,
+      linked_item_id: task.linkedItemId ? Number(task.linkedItemId) : null,
+      linked_item_quantity: task.linkedItemQuantity || 0,
       cat_id: task.catId === 'all' ? null : Number(task.catId)
     };
     await apiFetch(`/tasks/${id}`, {
@@ -195,11 +205,27 @@ export const apiClient = {
     });
   },
 
-  async completeTask(id: string): Promise<any> {
+  async completeTask(id: string, notes = ''): Promise<any> {
     const response = await apiFetch(`/tasks/${id}/complete`, {
-      method: 'POST'
+      method: 'POST',
+      body: JSON.stringify({
+        completed_at: new Date().toISOString(),
+        notes
+      })
     });
     return response;
+  },
+
+  async listTaskCompletions(id: string): Promise<any[]> {
+    const rows = await apiFetch(`/tasks/${id}/completions`);
+    return rows.map((row: any) => ({
+      id: String(row.id),
+      taskId: String(row.task_id),
+      completedAt: row.completed_at,
+      notes: row.notes || '',
+      linkedItemId: row.linked_item_id ? String(row.linked_item_id) : '',
+      deductedQuantity: Number(row.deducted_quantity || 0)
+    }));
   },
 
   async deleteTask(id: string): Promise<void> {
@@ -212,37 +238,62 @@ export const apiClient = {
   async listInventory(): Promise<any[]> {
     const items = await apiFetch('/inventory/items');
     return items.map((item: any) => {
-      let cat: any = 'Other';
-      const catName = item.category?.name || '其他';
-      if (catName.includes('粮') || catName.includes('Food')) cat = 'Food';
-      else if (catName.includes('零食') || catName.includes('Treat')) cat = 'Treat';
-      else if (catName.includes('砂') || catName.includes('Litter')) cat = 'Litter';
-      else if (catName.includes('医') || catName.includes('医疗') || catName.includes('Medical')) cat = 'Medical';
-
       return {
         id: String(item.id),
         name: item.name,
-        category: cat,
+        categoryId: item.category_id ? String(item.category_id) : null,
+        categoryName: item.category?.name || '未分类',
+        categoryIcon: item.category?.icon || '📦',
         stockAmount: Number(item.current_quantity || 0),
         unit: item.unit || '件',
         minThreshold: Number(item.warning_threshold || 0),
+        dailyConsumption: Number(item.daily_consumption || 0),
+        productionDate: item.production_date || '',
+        shelfLifeDays: Number(item.shelf_life_days || 0),
+        expiryWarningDays: Number(item.expiry_warning_days || 7),
         note: item.notes || '',
         lastUpdated: item.updated_at || new Date().toISOString()
       };
     });
   },
 
+  async listInventoryCategories(): Promise<any[]> {
+    const rows = await apiFetch('/inventory/categories');
+    return rows.map((row: any) => ({
+      id: String(row.id),
+      name: row.name,
+      icon: row.icon || '📦',
+      sortOrder: row.sort_order || 0
+    }));
+  },
+
+  async createInventoryCategory(name: string): Promise<any> {
+    const row = await apiFetch('/inventory/categories', {
+      method: 'POST',
+      body: JSON.stringify({ name, icon: '📦', sort_order: 0 })
+    });
+    return {
+      id: String(row.id),
+      name: row.name,
+      icon: row.icon || '📦',
+      sortOrder: row.sort_order || 0
+    };
+  },
+
   async createInventoryItem(supply: any): Promise<any> {
-    // 1. Ensure category ID exists
-    const categoryId = await getOrCreateCategory(supply.category);
-    
+    const categoryId = supply.categoryId ? Number(supply.categoryId) : await getOrCreateCategory(supply.categoryName);
+
     const payload = {
       name: supply.name,
       unit: supply.unit,
       current_quantity: supply.stockAmount,
-      weekly_consumption: 0,
+      weekly_consumption: supply.dailyConsumption ? supply.dailyConsumption * 7 : 0,
+      daily_consumption: supply.dailyConsumption || 0,
       warning_threshold: supply.minThreshold,
       warning_weeks: 1,
+      expiry_warning_days: supply.expiryWarningDays || 7,
+      production_date: supply.productionDate || null,
+      shelf_life_days: supply.shelfLifeDays || null,
       price_per_unit: 0,
       purchase_url: '',
       notes: supply.note,
@@ -257,12 +308,17 @@ export const apiClient = {
   },
 
   async updateInventoryItem(id: string, supply: any): Promise<void> {
-    const categoryId = await getOrCreateCategory(supply.category);
+    const categoryId = supply.categoryId ? Number(supply.categoryId) : await getOrCreateCategory(supply.categoryName);
     const payload = {
       name: supply.name,
       unit: supply.unit,
       current_quantity: supply.stockAmount,
+      weekly_consumption: supply.dailyConsumption ? supply.dailyConsumption * 7 : 0,
+      daily_consumption: supply.dailyConsumption || 0,
       warning_threshold: supply.minThreshold,
+      expiry_warning_days: supply.expiryWarningDays || 7,
+      production_date: supply.productionDate || null,
+      shelf_life_days: supply.shelfLifeDays || null,
       notes: supply.note,
       category_id: categoryId
     };
@@ -298,6 +354,13 @@ function calculateAge(birthdayStr: string): { years: number; months: number } {
   }
 }
 
+function toLocalDateTimeInput(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.slice(0, 16);
+  const offsetMs = date.getTimezoneOffset() * 60 * 1000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
 function calculateBirthday(years: number, months: number): string {
   const date = new Date();
   date.setFullYear(date.getFullYear() - years);
@@ -307,15 +370,7 @@ function calculateBirthday(years: number, months: number): string {
 
 // Map inventory category names to backend Categories (create on demand)
 async function getOrCreateCategory(category: string): Promise<number | null> {
-  const mappings: { [key: string]: { name: string; icon: string } } = {
-    'Food': { name: '主食猫粮', icon: '🍱' },
-    'Treat': { name: '零食冻干', icon: '🍗' },
-    'Litter': { name: '猫砂用品', icon: '🧹' },
-    'Medical': { name: '医疗健康', icon: '💊' },
-    'Other': { name: '其他商品', icon: '📦' }
-  };
-
-  const target = mappings[category] || mappings['Other'];
+  const target = { name: category || '未分类', icon: '📦' };
   
   try {
     const categoriesList = await apiFetch('/inventory/categories');

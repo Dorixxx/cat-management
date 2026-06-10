@@ -68,6 +68,9 @@ class TaskBase(BaseModel):
     frequency_days: int = Field(default=0, ge=0)
     next_due_date: datetime
     reminder_minutes: int = Field(default=30, ge=0)
+    completion_target: int = Field(default=0, ge=0)
+    linked_item_id: Optional[int] = None
+    linked_item_quantity: Optional[Decimal] = Decimal("0")
     bark_enabled: bool = True
 
 
@@ -82,6 +85,9 @@ class TaskUpdate(BaseModel):
     frequency_days: Optional[int] = Field(None, ge=0)
     next_due_date: Optional[datetime] = None
     reminder_minutes: Optional[int] = Field(None, ge=0)
+    completion_target: Optional[int] = Field(None, ge=0)
+    linked_item_id: Optional[int] = None
+    linked_item_quantity: Optional[Decimal] = None
     is_active: Optional[bool] = None
     bark_enabled: Optional[bool] = None
     cat_id: Optional[int] = None
@@ -90,9 +96,28 @@ class TaskUpdate(BaseModel):
 class TaskResponse(TaskBase):
     id: int
     cat_id: Optional[int]
+    completed_count: int
     is_active: bool
     created_at: datetime
     updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TaskCompleteRequest(BaseModel):
+    completed_at: Optional[datetime] = None
+    notes: Optional[str] = None
+
+
+class TaskCompletionResponse(BaseModel):
+    id: int
+    task_id: int
+    completed_at: datetime
+    notes: Optional[str]
+    linked_item_id: Optional[int]
+    deducted_quantity: Decimal
+    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -129,8 +154,12 @@ class InventoryBase(BaseModel):
     unit: str = Field(..., min_length=1, max_length=20)
     current_quantity: Optional[Decimal] = Decimal("0")
     weekly_consumption: Optional[Decimal] = Decimal("0")
+    daily_consumption: Optional[Decimal] = Decimal("0")
     warning_threshold: Optional[Decimal] = Decimal("0")
     warning_weeks: Optional[Decimal] = Decimal("1.0")
+    expiry_warning_days: Optional[int] = Field(default=7, ge=0)
+    production_date: Optional[date] = None
+    shelf_life_days: Optional[int] = Field(default=None, ge=0)
     price_per_unit: Optional[Decimal] = Decimal("0")
     purchase_url: Optional[str] = None
     notes: Optional[str] = None
@@ -145,8 +174,12 @@ class InventoryUpdate(BaseModel):
     unit: Optional[str] = Field(None, min_length=1, max_length=20)
     current_quantity: Optional[Decimal] = None
     weekly_consumption: Optional[Decimal] = None
+    daily_consumption: Optional[Decimal] = None
     warning_threshold: Optional[Decimal] = None
     warning_weeks: Optional[Decimal] = None
+    expiry_warning_days: Optional[int] = Field(None, ge=0)
+    production_date: Optional[date] = None
+    shelf_life_days: Optional[int] = Field(None, ge=0)
     price_per_unit: Optional[Decimal] = None
     purchase_url: Optional[str] = None
     notes: Optional[str] = None
@@ -248,10 +281,16 @@ class ExpenseStats(BaseModel):
 class InventoryWarning(BaseModel):
     item_id: int
     item_name: str
+    warning_type: str = "stock"
     current_quantity: Decimal
-    weekly_consumption: Decimal
+    daily_consumption: Decimal = Decimal("0")
+    weekly_consumption: Decimal = Decimal("0")
+    days_remaining: Optional[Decimal] = None
     weeks_remaining: Optional[Decimal]
-    warning_weeks: Decimal
+    expiry_date: Optional[date] = None
+    days_to_expiry: Optional[int] = None
+    warning_weeks: Decimal = Decimal("1.0")
+    expiry_warning_days: int = 7
     needs_purchase: bool
 
 
@@ -261,6 +300,7 @@ class BarkConfigBase(BaseModel):
     bark_server: Optional[str] = Field(default="https://api.day.app", max_length=255)
     enable_low_stock: bool = True
     enable_overdue: bool = True
+    expiry_warning_days: int = Field(default=7, ge=0)
 
 
 class BarkConfigCreate(BarkConfigBase):
@@ -272,6 +312,7 @@ class BarkConfigUpdate(BaseModel):
     bark_server: Optional[str] = Field(None, max_length=255)
     enable_low_stock: Optional[bool] = None
     enable_overdue: Optional[bool] = None
+    expiry_warning_days: Optional[int] = Field(None, ge=0)
 
 
 class BarkConfigResponse(BarkConfigBase):

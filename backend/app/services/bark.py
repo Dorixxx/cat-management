@@ -62,3 +62,16 @@ def send_inventory_warning(item_name: str, current: float, weeks_remaining: floa
         body = f"{item_name} 库存已到达预警线，请及时补充！"
     
     return send_notification(title, body, sound="alarm")
+
+
+def send_expiry_warning(item_name: str, days_to_expiry: int, expiry_date: str = None) -> bool:
+    """发送保质期临期提醒"""
+    title = f"⏳ 物品临期提醒"
+    if days_to_expiry < 0:
+        body = f"{item_name} 已过期 {abs(days_to_expiry)} 天"
+    else:
+        body = f"{item_name} 还有 {days_to_expiry} 天到期"
+    if expiry_date:
+        body += f"\n到期日: {expiry_date}"
+
+    return send_notification(title, body, sound="alarm")

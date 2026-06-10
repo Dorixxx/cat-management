@@ -35,11 +35,23 @@ def update_task(task_id: int, task: schemas.TaskUpdate, db: Session = Depends(ge
 
 
 @router.post("/{task_id}/complete", response_model=schemas.TaskResponse)
-def complete_task(task_id: int, db: Session = Depends(get_db)):
-    db_task = crud.complete_task(db, task_id)
+def complete_task(
+    task_id: int,
+    completion: Optional[schemas.TaskCompleteRequest] = None,
+    db: Session = Depends(get_db)
+):
+    db_task = crud.complete_task(db, task_id, completion or schemas.TaskCompleteRequest())
     if not db_task:
         raise HTTPException(status_code=404, detail="任务不存在")
     return db_task
+
+
+@router.get("/{task_id}/completions", response_model=List[schemas.TaskCompletionResponse])
+def list_task_completions(task_id: int, db: Session = Depends(get_db)):
+    db_task = crud.get_task(db, task_id)
+    if not db_task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    return crud.get_task_completions(db, task_id)
 
 
 @router.delete("/{task_id}")

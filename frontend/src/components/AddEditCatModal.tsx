@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Cat } from '../types';
-import { BREED_OPTIONS, CAT_AVATAR_PRESETS } from '../data';
-import { X, Check, Save } from 'lucide-react';
+import { BREED_OPTIONS, DEFAULT_CAT_AVATAR } from '../data';
+import { X, Save } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface AddEditCatModalProps {
@@ -17,33 +17,25 @@ export const AddEditCatModal: React.FC<AddEditCatModalProps> = ({
 }) => {
   const [name, setName] = useState(catToEdit?.name || '');
   const [breed, setBreed] = useState(catToEdit?.breed || BREED_OPTIONS[0]);
-  const [ageYears, setAgeYears] = useState(catToEdit?.ageYears ?? 1);
-  const [ageMonths, setAgeMonths] = useState(catToEdit?.ageMonths ?? 0);
+  const [birthday, setBirthday] = useState(catToEdit?.birthday || '');
   const [gender, setGender] = useState<'Male' | 'Female'>(catToEdit?.gender || 'Male');
   const [weight, setWeight] = useState(catToEdit?.weight?.toString() || '4.0');
-  const [guardian, setGuardian] = useState(catToEdit?.guardian || '');
-  const [avatarUrl, setAvatarUrl] = useState(catToEdit?.avatarUrl || CAT_AVATAR_PRESETS[0]);
+  const [avatarUrl, setAvatarUrl] = useState(catToEdit?.avatarUrl || '');
   const [description, setDescription] = useState(catToEdit?.description || '');
-
-  const [customAvatar, setCustomAvatar] = useState(
-    catToEdit && !CAT_AVATAR_PRESETS.includes(catToEdit.avatarUrl) ? catToEdit.avatarUrl : ''
-  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
-
-    const finalAvatar = customAvatar.trim() || avatarUrl;
+    if (!name.trim() || !birthday) return;
 
     onSave({
       name: name.trim(),
       breed,
-      ageYears: Number(ageYears),
-      ageMonths: Number(ageMonths),
+      birthday,
+      ageYears: 0,
+      ageMonths: 0,
       gender,
       weight: parseFloat(weight) || 4.0,
-      avatarUrl: finalAvatar,
-      guardian: guardian.trim() || '家长安安',
+      avatarUrl: avatarUrl.trim() || DEFAULT_CAT_AVATAR,
       description: description.trim(),
     });
   };
@@ -106,32 +98,16 @@ export const AddEditCatModal: React.FC<AddEditCatModalProps> = ({
             </div>
           </div>
 
-          {/* Row 2: Age in Years and Months */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Row 2: Birthday */}
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-                年龄周期-年阶段 *
+                出生日期 *
               </label>
               <input
-                type="number"
-                min="0"
-                max="30"
-                value={ageYears}
-                onChange={(e) => setAgeYears(Math.max(0, parseInt(e.target.value) || 0))}
-                className="w-full rounded-lg border border-stone-200 py-1.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden text-xs font-semibold font-mono"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-                零几个月 (0-11) *
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="11"
-                value={ageMonths}
-                onChange={(e) => setAgeMonths(Math.min(11, Math.max(0, parseInt(e.target.value) || 0)))}
+                type="date"
+                value={birthday}
+                onChange={(e) => setBirthday(e.target.value)}
                 className="w-full rounded-lg border border-stone-200 py-1.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden text-xs font-semibold font-mono"
                 required
               />
@@ -182,65 +158,20 @@ export const AddEditCatModal: React.FC<AddEditCatModalProps> = ({
             </div>
           </div>
 
-          {/* Primary guardian */}
-          <div>
-            <label className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-              日常守护家长 / 照顾人姓名
-            </label>
-            <input
-              type="text"
-              value={guardian}
-              onChange={(e) => setGuardian(e.target.value)}
-              placeholder="例如：安安、陈女士"
-              className="w-full rounded-lg border border-stone-200 py-1.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden text-xs font-medium"
-            />
-          </div>
-
-          {/* Avatar choice catalog */}
+          {/* Avatar */}
           <div>
             <label className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-2">
-              挑选自带的可爱头像
+              猫咪头像
             </label>
-            <div className="grid grid-cols-8 gap-2 mb-2">
-              {CAT_AVATAR_PRESETS.map((url, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => {
-                    setAvatarUrl(url);
-                    setCustomAvatar('');
-                  }}
-                  className={`relative rounded-lg overflow-hidden border-2 aspect-square cursor-pointer bg-stone-50 ${
-                    avatarUrl === url && !customAvatar
-                      ? 'border-amber-500 shadow-xs'
-                      : 'border-transparent hover:scale-105 transition-transform'
-                  }`}
-                >
-                  <img src={url} alt={`preset-${i}`} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
-                  {avatarUrl === url && !customAvatar && (
-                    <div className="absolute inset-0 bg-stone-900/10 flex items-center justify-center">
-                      <div className="bg-amber-500 text-white rounded-full p-0.5">
-                        <Check size={8} strokeWidth={4} />
-                      </div>
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {/* Custom URL Option */}
-            <div className="mt-2 text-xs">
-              <label className="block text-[10px] font-medium text-stone-400 mb-1">
-                或直接载入外链图片大图 (Custom Image Link)
-              </label>
+            <div className="flex gap-3 items-center">
+              <div className="w-16 h-16 rounded-xl bg-stone-50 border border-stone-200 overflow-hidden shrink-0">
+                <img src={avatarUrl || DEFAULT_CAT_AVATAR} alt="avatar-preview" className="w-full h-full object-cover" />
+              </div>
               <input
                 type="url"
-                value={customAvatar}
-                onChange={(e) => {
-                  setCustomAvatar(e.target.value);
-                  setAvatarUrl(e.target.value);
-                }}
-                placeholder="https://images.unsplash.com/photo-..."
+                value={avatarUrl}
+                onChange={(e) => setAvatarUrl(e.target.value)}
+                placeholder="可选：粘贴头像图片 URL；留空使用简笔画"
                 className="w-full rounded-lg border border-stone-200 py-1.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden text-[10px] font-mono"
               />
             </div>

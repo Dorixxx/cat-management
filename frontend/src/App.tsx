@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Cat, SupplyItem, RoutineTask, WeightRecord } from './types';
+import { Cat, SupplyItem, RoutineTask, WeightRecord, InventoryCategory } from './types';
 import { INITIAL_CATS, INITIAL_SUPPLIES, INITIAL_TASKS } from './data';
 import { StatsOverview } from './components/StatsOverview';
 import { CatCard } from './components/CatCard';
@@ -27,6 +27,7 @@ export default function App() {
   // -----------------------------------------
   const [cats, setCats] = useState<Cat[]>([]);
   const [supplies, setSupplies] = useState<SupplyItem[]>([]);
+  const [categories, setCategories] = useState<InventoryCategory[]>([]);
   const [tasks, setTasks] = useState<RoutineTask[]>([]);
   const [weightRecords, setWeightRecords] = useState<WeightRecord[]>([]);
 
@@ -47,15 +48,17 @@ export default function App() {
     setApiErrorMsg(null);
     try {
       console.log('🔄 Syncing with backend API ...');
-      const [backendCats, backendSupplies, backendTasks] = await Promise.all([
+      const [backendCats, backendSupplies, backendTasks, backendCategories] = await Promise.all([
         apiClient.listCats(),
         apiClient.listInventory(),
-        apiClient.listTasks()
+        apiClient.listTasks(),
+        apiClient.listInventoryCategories()
       ]);
 
       if (backendCats) setCats(backendCats);
       if (backendSupplies) setSupplies(backendSupplies);
       if (backendTasks) setTasks(backendTasks);
+      if (backendCategories) setCategories(backendCategories);
 
       // Fetch weight records for loaded cats
       const allWeights: WeightRecord[] = [];
@@ -94,7 +97,7 @@ export default function App() {
     const config = getBarkConfig();
     if (config.enableOverdue && config.deviceKey && tasks.length > 0) {
       const today = new Date().toISOString().split('T')[0];
-      const overdueTasks = tasks.filter(t => t.nextDueDate < today);
+      const overdueTasks = tasks.filter(t => t.nextDueDate.slice(0, 10) < today);
       if (overdueTasks.length > 0) {
         const lastAlertDay = localStorage.getItem('last_overdue_alert_day');
         if (lastAlertDay !== today) {
@@ -134,6 +137,7 @@ export default function App() {
 
       setCats([]);
       setSupplies([]);
+      setCategories([]);
       setTasks([]);
       setWeightRecords([]);
       syncAllFromBackend();
@@ -257,6 +261,24 @@ export default function App() {
     setSupplies(prev => [newItem, ...prev]);
   };
 
+  const handleAddCategory = async (name: string): Promise<InventoryCategory | null> => {
+    try {
+      const category = await apiClient.createInventoryCategory(name);
+      await syncAllFromBackend();
+      return category;
+    } catch (e) {
+      console.error("API createInventoryCategory failed:", e);
+      const localCategory: InventoryCategory = {
+        id: `category-${Date.now()}`,
+        name,
+        icon: '📦',
+        sortOrder: categories.length
+      };
+      setCategories(prev => [...prev, localCategory]);
+      return localCategory;
+    }
+  };
+
   const handleUpdateSupply = async (updatedItem: SupplyItem) => {
     try {
       await apiClient.updateInventoryItem(updatedItem.id, updatedItem);
@@ -342,12 +364,12 @@ export default function App() {
   };
 
   // Automated Routine Completion Engine
-  const handleCompleteTaskCycle = async (task: RoutineTask) => {
+  const handleCompleteTaskCycle = async (task: RoutineTask, notes = '') => {
     const today = new Date().toISOString().split('T')[0];
     const calculatedNext = addDaysStr(today, task.intervalDays);
 
     try {
-      await apiClient.completeTask(task.id);
+      await apiClient.completeTask(task.id, notes);
       await syncAllFromBackend();
       return;
     } catch (e) {
@@ -357,7 +379,8 @@ export default function App() {
     const updated: RoutineTask = {
       ...task,
       lastCompletedDate: today,
-      nextDueDate: calculatedNext,
+      nextDueDate: task.intervalDays > 0 ? `${calculatedNext}T09:00` : task.nextDueDate,
+      completedCount: (task.completedCount || 0) + 1,
     };
 
     setTasks(prev => prev.map(t => t.id === task.id ? updated : t));
@@ -394,7 +417,7 @@ export default function App() {
       
       {/* 1. Header Branding Navigation bar with Integrated Switcher */}
       <header className="bg-white border-b border-stone-100 sticky top-0 z-40 shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between py-3 md:py-0 md:h-16 gap-3">
             
             {/* Left: Brand */}
@@ -472,7 +495,7 @@ export default function App() {
       </header>
 
       {/* 2. Main Content Stage */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      <main className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         
         {/* 3. Subview render */}
         <div className="min-h-[460px]">
@@ -526,7 +549,7 @@ export default function App() {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-6">
                     {cats.map(cat => (
                       <CatCard
                         key={cat.id}
@@ -552,6 +575,8 @@ export default function App() {
           {activeTab === 'supplies' && (
             <SuppliesInventory
               supplies={supplies}
+              categories={categories}
+              onAddCategory={handleAddCategory}
               onAddSupply={handleAddSupply}
               onUpdateSupply={handleUpdateSupply}
               onDeleteSupply={handleDeleteSupply}
@@ -563,6 +588,7 @@ export default function App() {
             <RoutineTasks
               tasks={tasks}
               cats={cats}
+              supplies={supplies}
               onAddTask={handleAddTask}
               onUpdateTask={handleUpdateTask}
               onDeleteTask={handleDeleteTask}

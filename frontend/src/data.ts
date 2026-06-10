@@ -20,13 +20,14 @@ export const BREED_OPTIONS = [
   '其他品种'
 ];
 
-export const CAT_AVATAR_PRESETS = [
-  'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=400',
-  'https://images.unsplash.com/photo-1533738363-b7f9aef128ce?auto=format&fit=crop&q=80&w=400',
-  'https://images.unsplash.com/photo-1574158622643-69d34d72650a?auto=format&fit=crop&q=80&w=400',
-  'https://images.unsplash.com/photo-1519052537078-e6302a4968d4?auto=format&fit=crop&q=80&w=400',
-  'https://images.unsplash.com/photo-1495360010541-f48722b34f7d?auto=format&fit=crop&q=80&w=400',
-  'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=400',
-  'https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&q=80&w=400',
-  'https://images.unsplash.com/photo-1501820488136-72669a482d14?auto=format&fit=crop&q=80&w=400'
-];
+export const DEFAULT_CAT_AVATAR =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+  <rect width="240" height="240" rx="28" fill="#faf7ef"/>
+  <path d="M68 100 82 58l34 30 36-30 20 42" fill="none" stroke="#292524" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="120" cy="128" r="58" fill="#fffaf0" stroke="#292524" stroke-width="10"/>
+  <path d="M98 124h.1M142 124h.1" stroke="#292524" stroke-width="12" stroke-linecap="round"/>
+  <path d="M120 137v12M104 156c9 9 23 9 32 0" fill="none" stroke="#292524" stroke-width="8" stroke-linecap="round"/>
+  <path d="M82 142H46M86 158H54M158 142h36M154 158h32" stroke="#292524" stroke-width="6" stroke-linecap="round"/>
+</svg>`);

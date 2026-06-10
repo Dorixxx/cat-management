@@ -48,12 +48,33 @@ class Task(Base):
     frequency_days = Column(Integer, default=0)  # 0表示一次性任务
     next_due_date = Column(DateTime, nullable=False)
     reminder_minutes = Column(Integer, default=30)  # 提前提醒分钟数
+    completion_target = Column(Integer, default=0)  # 0 表示不限次数
+    completed_count = Column(Integer, default=0)
+    linked_item_id = Column(Integer, ForeignKey("inventory.id", ondelete="SET NULL"), nullable=True)
+    linked_item_quantity = Column(Numeric(10, 2), default=0)
     is_active = Column(Boolean, default=True)
     bark_enabled = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     cat = relationship("Cat", back_populates="tasks")
+    linked_item = relationship("Inventory")
+    completion_records = relationship("TaskCompletion", back_populates="task", cascade="all, delete-orphan")
+
+
+class TaskCompletion(Base):
+    __tablename__ = "task_completions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
+    completed_at = Column(DateTime, default=datetime.now)
+    notes = Column(Text)
+    linked_item_id = Column(Integer, ForeignKey("inventory.id", ondelete="SET NULL"), nullable=True)
+    deducted_quantity = Column(Numeric(10, 2), default=0)
+    created_at = Column(DateTime, default=datetime.now)
+
+    task = relationship("Task", back_populates="completion_records")
+    linked_item = relationship("Inventory")
 
 
 class InventoryCategory(Base):
@@ -77,8 +98,12 @@ class Inventory(Base):
     unit = Column(String(20), nullable=False)  # kg/L/袋/盒
     current_quantity = Column(Numeric(10, 2), default=0)
     weekly_consumption = Column(Numeric(10, 2), default=0)  # 每周消耗量
+    daily_consumption = Column(Numeric(10, 2), default=0)  # 每日消耗量
     warning_threshold = Column(Numeric(10, 2), default=0)  # 预警阈值
     warning_weeks = Column(Numeric(3, 1), default=1.0)  # 提前预警周数
+    expiry_warning_days = Column(Integer, default=7)
+    production_date = Column(Date)
+    shelf_life_days = Column(Integer)
     price_per_unit = Column(Numeric(10, 2), default=0)  # 单价
     purchase_url = Column(String(500))
     notes = Column(Text)
@@ -126,5 +151,6 @@ class BarkConfig(Base):
     bark_server = Column(String(255), default="https://api.day.app")
     enable_low_stock = Column(Boolean, default=True)
     enable_overdue = Column(Boolean, default=True)
+    expiry_warning_days = Column(Integer, default=7)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)

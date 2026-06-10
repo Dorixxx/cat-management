@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
-import { RoutineTask, Cat } from '../types';
+import { RoutineTask, Cat, SupplyItem } from '../types';
 import { Check, CalendarDays, Plus, Trash2, Edit3, RotateCcw, X } from 'lucide-react';
 
 interface RoutineTasksProps {
   tasks: RoutineTask[];
   cats: Cat[];
+  supplies: SupplyItem[];
   onAddTask: (task: Omit<RoutineTask, 'id' | 'lastCompletedDate'>) => void;
   onUpdateTask: (task: RoutineTask) => void;
   onDeleteTask: (id: string) => void;
-  onCompleteTask: (task: RoutineTask) => void;
+  onCompleteTask: (task: RoutineTask, notes?: string) => void;
 }
 
 export const RoutineTasks: React.FC<RoutineTasksProps> = ({
   tasks,
   cats,
+  supplies,
   onAddTask,
   onUpdateTask,
   onDeleteTask,
@@ -29,8 +31,11 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
   const [title, setTitle] = useState('');
   const [catId, setCatId] = useState('all');
   const [intervalDays, setIntervalDays] = useState<number>(30); // default monthly
+  const [completionTarget, setCompletionTarget] = useState<number>(0);
+  const [linkedItemId, setLinkedItemId] = useState('');
+  const [linkedItemQuantity, setLinkedItemQuantity] = useState<number>(0);
   const [nextDueDate, setNextDueDate] = useState(() => {
-    return new Date().toISOString().split('T')[0];
+    return new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   });
   const [note, setNote] = useState('');
 
@@ -48,6 +53,9 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
           title: title.trim(),
           catId,
           intervalDays: Number(intervalDays),
+          completionTarget: Number(completionTarget),
+          linkedItemId,
+          linkedItemQuantity: Number(linkedItemQuantity),
           nextDueDate,
           note: note.trim(),
         });
@@ -58,6 +66,9 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
         title: title.trim(),
         catId,
         intervalDays: Number(intervalDays),
+        completionTarget: Number(completionTarget),
+        linkedItemId,
+        linkedItemQuantity: Number(linkedItemQuantity),
         nextDueDate,
         note: note.trim(),
       });
@@ -71,6 +82,9 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
     setTitle(task.title);
     setCatId(task.catId);
     setIntervalDays(task.intervalDays);
+    setCompletionTarget(task.completionTarget || 0);
+    setLinkedItemId(task.linkedItemId || '');
+    setLinkedItemQuantity(task.linkedItemQuantity || 0);
     setNextDueDate(task.nextDueDate);
     setNote(task.note);
     setShowForm(true); // Open panel on edit
@@ -81,7 +95,10 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
     setTitle('');
     setCatId('all');
     setIntervalDays(30);
-    setNextDueDate(new Date().toISOString().split('T')[0]);
+    setCompletionTarget(0);
+    setLinkedItemId('');
+    setLinkedItemQuantity(0);
+    setNextDueDate(new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16));
     setNote('');
     setShowForm(false);
   };
@@ -120,7 +137,7 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
   // Perform calculations to render tasks
   const filteredTasks = tasks.filter(task => {
     if (targetFilter === 'Overdue') {
-      return task.nextDueDate < todayStr;
+      return task.nextDueDate.slice(0, 10) < todayStr;
     }
     if (typeof targetFilter === 'object' && targetFilter.catId) {
       return task.catId === targetFilter.catId;
@@ -157,7 +174,7 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
                   : 'bg-rose-50 border-rose-100 text-rose-600 hover:bg-rose-100'
               }`}
             >
-              已逾期待办 ({tasks.filter(t => t.nextDueDate < todayStr).length})
+              已逾期待办 ({tasks.filter(t => t.nextDueDate.slice(0, 10) < todayStr).length})
             </button>
           </div>
 
@@ -209,7 +226,8 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
               .sort((a,b) => a.nextDueDate.localeCompare(b.nextDueDate))
               .map(task => {
                 const { days, isOverdue } = getDaysDiff(task.nextDueDate);
-                const isDueToday = task.nextDueDate === todayStr;
+                const isDueToday = task.nextDueDate.slice(0, 10) === todayStr;
+                const linkedItem = supplies.find(item => item.id === task.linkedItemId);
 
                 return (
                   <div
@@ -236,6 +254,16 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
                         <span className="text-[9px] font-semibold text-stone-400 border border-stone-200/60 px-1.5 py-0.5 rounded bg-stone-50">
                           ⏱️ {formatInterval(task.intervalDays)}
                         </span>
+                        {task.completionTarget > 0 && (
+                          <span className="text-[9px] font-semibold text-stone-400 border border-stone-200/60 px-1.5 py-0.5 rounded bg-stone-50">
+                            {task.completedCount}/{task.completionTarget} 次
+                          </span>
+                        )}
+                        {linkedItem && (
+                          <span className="text-[9px] font-semibold text-teal-700 border border-teal-100 px-1.5 py-0.5 rounded bg-teal-50">
+                            扣 {linkedItem.name} {task.linkedItemQuantity}{linkedItem.unit}
+                          </span>
+                        )}
                         
                         {/* Overdue/Today indicator */}
                         {isOverdue ? (
@@ -265,7 +293,7 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
                       <div className="flex items-center gap-4 text-[9px] font-mono text-stone-400 pt-1">
                         <span>上次完成: {task.lastCompletedDate ? `${task.lastCompletedDate}` : '尚未记录 (全新划定)'}</span>
                         <span>•</span>
-                        <span>下次应办: <strong className={isOverdue ? 'text-rose-600 font-bold' : 'text-stone-600'}>{task.nextDueDate}</strong></span>
+                        <span>下次应办: <strong className={isOverdue ? 'text-rose-600 font-bold' : 'text-stone-600'}>{task.nextDueDate.replace('T', ' ')}</strong></span>
                       </div>
                     </div>
 
@@ -273,7 +301,10 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
                     <div className="flex items-center gap-2.5 self-end md:self-center shrink-0">
                       {/* Check off Complete for this period */}
                       <button
-                        onClick={() => onCompleteTask(task)}
+                        onClick={() => {
+                          const notes = prompt('填写本次完成情况（可留空）') || '';
+                          onCompleteTask(task, notes);
+                        }}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition shadow-xs cursor-pointer select-none"
                         title="点击本期打卡"
                       >
@@ -370,6 +401,7 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
                   onChange={(e) => setIntervalDays(Number(e.target.value))}
                   className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-2 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition"
                 >
+                  <option value={0}>临时任务 / 完成后关闭</option>
                   <option value={1}>每日一次 (日常护理等)</option>
                   <option value={7}>每周一次 (卫生清扫等)</option>
                   <option value={14}>每两周一次 (剪指甲/理毛等)</option>
@@ -386,12 +418,56 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
                   计划下期应跑日期 *
                 </label>
                 <input
-                  type="date"
+                  type="datetime-local"
                   value={nextDueDate}
                   required
                   onChange={(e) => setNextDueDate(e.target.value)}
                   className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white focus:border-amber-400 outline-hidden transition"
                 />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">
+                    需要完成次数
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={completionTarget}
+                    onChange={(e) => setCompletionTarget(Math.max(0, Number(e.target.value)))}
+                    className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white focus:border-amber-400 outline-hidden transition"
+                    placeholder="0 为不限"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">
+                    联动物品
+                  </label>
+                  <select
+                    value={linkedItemId}
+                    onChange={(e) => setLinkedItemId(e.target.value)}
+                    className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-2 bg-stone-50/50 focus:bg-white focus:border-amber-400 outline-hidden transition"
+                  >
+                    <option value="">不联动库存</option>
+                    {supplies.map(item => (
+                      <option key={item.id} value={item.id}>{item.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">
+                    每次扣减数量
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={linkedItemQuantity}
+                    onChange={(e) => setLinkedItemQuantity(Math.max(0, Number(e.target.value)))}
+                    className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white focus:border-amber-400 outline-hidden transition"
+                  />
+                </div>
               </div>
 
               {/* Note text description */}

@@ -13,7 +13,7 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cats, supplies, ta
   const totalSupplies = supplies.length;
   const lowStockCount = supplies.filter(s => s.stockAmount < s.minThreshold).length;
   const todayStr = new Date().toISOString().split('T')[0];
-  const dueOrOverdueTasks = tasks.filter(t => t.nextDueDate <= todayStr).length;
+  const dueOrOverdueTasks = tasks.filter(t => t.nextDueDate.slice(0, 10) <= todayStr).length;
 
   return (
     <div className="bg-white px-5 py-3 border border-stone-100/80 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.01)] flex flex-wrap items-center justify-between gap-4 mb-6 text-xs text-stone-600">
@@ -74,4 +74,3 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cats, supplies, ta
     </div>
   );
 };
-

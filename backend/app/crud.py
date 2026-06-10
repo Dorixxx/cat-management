@@ -119,22 +119,51 @@ def update_task(db: Session, task_id: int, task: schemas.TaskUpdate):
     return db_task
 
 
-def complete_task(db: Session, task_id: int):
+def complete_task(db: Session, task_id: int, completion: Optional[schemas.TaskCompleteRequest] = None):
     """完成任务并更新下次到期时间"""
     db_task = get_task(db, task_id)
     if not db_task:
         return None
-    
+
+    completed_at = completion.completed_at if completion and completion.completed_at else datetime.now()
+    deducted_quantity = db_task.linked_item_quantity or Decimal("0")
+
+    if db_task.linked_item_id and deducted_quantity > 0:
+        item = get_inventory_item(db, db_task.linked_item_id)
+        if item:
+            item.current_quantity = item.current_quantity - deducted_quantity
+            if item.current_quantity < 0:
+                item.current_quantity = Decimal("0")
+
+    db_completion = models.TaskCompletion(
+        task_id=task_id,
+        completed_at=completed_at,
+        notes=completion.notes if completion else None,
+        linked_item_id=db_task.linked_item_id,
+        deducted_quantity=deducted_quantity
+    )
+    db.add(db_completion)
+    db_task.completed_count = (db_task.completed_count or 0) + 1
+
     if db_task.frequency_days > 0:
         # 周期性任务，更新下次到期时间
-        db_task.next_due_date = datetime.now() + timedelta(days=db_task.frequency_days)
+        db_task.next_due_date = completed_at + timedelta(days=db_task.frequency_days)
     else:
         # 一次性任务，标记为不活跃
+        db_task.is_active = False
+
+    if db_task.completion_target and db_task.completed_count >= db_task.completion_target:
         db_task.is_active = False
     
     db.commit()
     db.refresh(db_task)
     return db_task
+
+
+def get_task_completions(db: Session, task_id: int, skip: int = 0, limit: int = 100):
+    return db.query(models.TaskCompletion).filter(
+        models.TaskCompletion.task_id == task_id
+    ).order_by(models.TaskCompletion.completed_at.desc()).offset(skip).limit(limit).all()
 
 
 def delete_task(db: Session, task_id: int):
@@ -231,11 +260,23 @@ def get_inventory_warnings(db: Session):
     """获取库存预警列表"""
     items = get_inventory_items(db, active_only=True)
     warnings = []
+    today = date.today()
+    config = get_bark_config(db)
+    default_expiry_warning_days = config.expiry_warning_days if config else 7
     for item in items:
-        if item.weekly_consumption and item.weekly_consumption > 0:
-            weeks_remaining = item.current_quantity / item.weekly_consumption
+        daily_consumption = item.daily_consumption or Decimal("0")
+        weekly_consumption = item.weekly_consumption or Decimal("0")
+
+        if daily_consumption > 0:
+            days_remaining = item.current_quantity / daily_consumption
+            weeks_remaining = days_remaining / Decimal("7")
+            needs_purchase = weeks_remaining <= item.warning_weeks
+        elif weekly_consumption > 0:
+            weeks_remaining = item.current_quantity / weekly_consumption
+            days_remaining = weeks_remaining * Decimal("7")
             needs_purchase = weeks_remaining <= item.warning_weeks
         else:
+            days_remaining = None
             weeks_remaining = None
             needs_purchase = item.current_quantity <= item.warning_threshold
         
@@ -243,12 +284,39 @@ def get_inventory_warnings(db: Session):
             warnings.append({
                 "item_id": item.id,
                 "item_name": item.name,
+                "warning_type": "stock",
                 "current_quantity": item.current_quantity,
-                "weekly_consumption": item.weekly_consumption or Decimal("0"),
+                "daily_consumption": daily_consumption,
+                "weekly_consumption": weekly_consumption,
+                "days_remaining": days_remaining,
                 "weeks_remaining": weeks_remaining,
+                "expiry_date": None,
+                "days_to_expiry": None,
                 "warning_weeks": item.warning_weeks,
+                "expiry_warning_days": item.expiry_warning_days or 7,
                 "needs_purchase": True
             })
+
+        if item.production_date and item.shelf_life_days:
+            expiry_date = item.production_date + timedelta(days=item.shelf_life_days)
+            days_to_expiry = (expiry_date - today).days
+            warning_days = default_expiry_warning_days
+            if days_to_expiry <= warning_days:
+                warnings.append({
+                    "item_id": item.id,
+                    "item_name": item.name,
+                    "warning_type": "expiry",
+                    "current_quantity": item.current_quantity,
+                    "daily_consumption": daily_consumption,
+                    "weekly_consumption": weekly_consumption,
+                    "days_remaining": days_remaining,
+                    "weeks_remaining": weeks_remaining,
+                    "expiry_date": expiry_date,
+                    "days_to_expiry": days_to_expiry,
+                    "warning_weeks": item.warning_weeks,
+                    "expiry_warning_days": warning_days,
+                    "needs_purchase": False
+                })
     return warnings
 
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Cat, RoutineTask, WeightRecord } from '../types';
 import { X, Calendar, ClipboardList, TrendingUp, Info, Plus, Weight, ShieldAlert, Check } from 'lucide-react';
 import { motion } from 'motion/react';
+import { DEFAULT_CAT_AVATAR } from '../data';
 
 interface CatDetailsModalProps {
   cat: Cat;
@@ -191,7 +192,7 @@ export const CatDetailsModal: React.FC<CatDetailsModalProps> = ({
           <div className="space-y-4">
             <div className="relative rounded-lg overflow-hidden aspect-square shadow-sm bg-stone-100">
               <img
-                src={cat.avatarUrl || 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=400'}
+                src={cat.avatarUrl || DEFAULT_CAT_AVATAR}
                 alt={cat.name}
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
@@ -208,9 +209,7 @@ export const CatDetailsModal: React.FC<CatDetailsModalProps> = ({
                   {cat.gender === 'Female' ? '♀ 小仙女' : '♂ 大帅哥'}
                 </span>
               </div>
-              <p className="text-[10px] text-stone-400 font-mono mt-1">
-                守护人 / 家长: <span className="font-bold text-stone-600">{cat.guardian}</span>
-              </p>
+              <p className="text-[10px] text-stone-400 font-mono mt-1">出生日期: {cat.birthday || '未记录'}</p>
             </div>
 
             <div className="bg-amber-50/40 border-l-[3px] border-amber-500 p-3 rounded-r-lg">
@@ -298,12 +297,12 @@ export const CatDetailsModal: React.FC<CatDetailsModalProps> = ({
                     <p className="font-bold text-stone-800 mt-0.5">{cat.gender === 'Female' ? '母猫 / 公主' : '公猫 / 王子'}</p>
                   </div>
                   <div className="bg-stone-50/50 p-2.5 rounded-lg">
-                    <p className="text-[9px] font-mono text-stone-400">首要照料家长</p>
-                    <p className="font-bold text-stone-800 mt-0.5">{cat.guardian}</p>
-                  </div>
-                  <div className="bg-stone-50/50 p-2.5 rounded-lg">
                     <p className="text-[9px] font-mono text-stone-400">最近上秤实重</p>
                     <p className="font-bold text-stone-800 mt-0.5">{cat.weight.toFixed(2)} kg</p>
+                  </div>
+                  <div className="bg-stone-50/50 p-2.5 rounded-lg">
+                    <p className="text-[9px] font-mono text-stone-400">出生日期</p>
+                    <p className="font-bold text-stone-800 mt-0.5">{cat.birthday || '未记录'}</p>
                   </div>
                 </div>
 
@@ -417,7 +416,7 @@ export const CatDetailsModal: React.FC<CatDetailsModalProps> = ({
                   <div className="space-y-3">
                     {catTasks.map(task => {
                       const today = new Date().toISOString().split('T')[0];
-                      const isOverdue = task.nextDueDate < today;
+                      const isOverdue = task.nextDueDate.slice(0, 10) < today;
                       
                       return (
                         <div key={task.id} className={`p-3 rounded-lg border text-xs ${isOverdue ? 'border-rose-100 bg-rose-50/20' : 'border-stone-100 bg-stone-50/40'}`}>
@@ -430,7 +429,7 @@ export const CatDetailsModal: React.FC<CatDetailsModalProps> = ({
                           {task.note && <p className="text-[10px] text-stone-400 mt-1">{task.note}</p>}
                           <div className="flex items-center justify-between text-[9px] text-stone-400 font-mono mt-2.5 pt-2 border-t border-dotted border-stone-200">
                             <span>频次: 每 {task.intervalDays} 天一次</span>
-                            <span>下期到期日: <strong className={isOverdue ? 'text-rose-600' : 'text-stone-600'}>{task.nextDueDate}</strong></span>
+                            <span>下期到期: <strong className={isOverdue ? 'text-rose-600' : 'text-stone-600'}>{task.nextDueDate.replace('T', ' ')}</strong></span>
                           </div>
                         </div>
                       );

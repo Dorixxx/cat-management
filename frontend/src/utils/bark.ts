@@ -3,6 +3,7 @@ export interface BarkConfig {
   deviceKey: string;  // user's unique Bark Key
   enableLowStock: boolean;
   enableOverdue: boolean;
+  expiryWarningDays: number;
 }
 
 const STORAGE_KEY = 'felinescape_v2_bark_config';
@@ -18,6 +19,7 @@ export const getBarkConfig = (): BarkConfig => {
         deviceKey: parsed.deviceKey || '',
         enableLowStock: !!parsed.enableLowStock,
         enableOverdue: !!parsed.enableOverdue,
+        expiryWarningDays: Number(parsed.expiryWarningDays || 7),
       };
     } catch (e) {
       // fallback
@@ -28,6 +30,7 @@ export const getBarkConfig = (): BarkConfig => {
     deviceKey: '',
     enableLowStock: false,
     enableOverdue: false,
+    expiryWarningDays: 7,
   };
 };
 
@@ -36,6 +39,7 @@ const toBackendPayload = (config: BarkConfig) => ({
   bark_server: config.serverUrl.trim() || 'https://api.day.app',
   enable_low_stock: config.enableLowStock,
   enable_overdue: config.enableOverdue,
+  expiry_warning_days: config.expiryWarningDays || 7,
 });
 
 const fromBackendPayload = (payload: any): BarkConfig => ({
@@ -43,6 +47,7 @@ const fromBackendPayload = (payload: any): BarkConfig => ({
   deviceKey: payload.bark_key || '',
   enableLowStock: !!payload.enable_low_stock,
   enableOverdue: !!payload.enable_overdue,
+  expiryWarningDays: Number(payload.expiry_warning_days || 7),
 });
 
 export const saveBarkConfigLocal = (config: BarkConfig): void => {

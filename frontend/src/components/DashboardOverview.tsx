@@ -28,8 +28,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const supplyHealthRate = totalSupplies > 0 ? Math.round((normalStockCount / totalSupplies) * 100) : 100;
 
   // Tasks analysis
-  const overdueTasks = tasks.filter(t => t.nextDueDate < todayStr);
-  const dueTodayTasks = tasks.filter(t => t.nextDueDate === todayStr);
+  const overdueTasks = tasks.filter(t => t.nextDueDate.slice(0, 10) < todayStr);
+  const dueTodayTasks = tasks.filter(t => t.nextDueDate.slice(0, 10) === todayStr);
   const activeTasksCount = overdueTasks.length + dueTodayTasks.length;
 
   // Cat demographic analysis

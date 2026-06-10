@@ -1,6 +1,7 @@
 import React from 'react';
 import { Cat } from '../types';
-import { Calendar, User, Eye, Edit3 } from 'lucide-react';
+import { Calendar, Cake, Eye, Edit3 } from 'lucide-react';
+import { DEFAULT_CAT_AVATAR } from '../data';
 
 interface CatCardProps {
   cat: Cat;
@@ -34,7 +35,7 @@ export const CatCard: React.FC<CatCardProps> = ({
         {/* Cat Photo Cover */}
         <div className="relative h-48 bg-stone-50 overflow-hidden">
           <img
-            src={cat.avatarUrl || 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=400'}
+            src={cat.avatarUrl || DEFAULT_CAT_AVATAR}
             alt={cat.name}
             referrerPolicy="no-referrer"
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-102"
@@ -71,8 +72,8 @@ export const CatCard: React.FC<CatCardProps> = ({
               <span>年龄: {formattedAge()}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <User size={11} />
-              <span className="truncate">守护家长: {cat.guardian || '无'}</span>
+              <Cake size={11} />
+              <span className="truncate">生日: {cat.birthday || '未记录'}</span>
             </div>
           </div>
         </div>

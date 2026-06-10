@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 from ..database import SessionLocal
 from .. import crud
-from .bark import send_task_reminder, send_inventory_warning
+from .bark import send_task_reminder, send_inventory_warning, send_expiry_warning
 
 scheduler = BackgroundScheduler()
 
@@ -42,11 +42,18 @@ def check_inventory():
 
         warnings = crud.get_inventory_warnings(db)
         for warning in warnings:
-            send_inventory_warning(
-                item_name=warning["item_name"],
-                current=float(warning["current_quantity"]),
-                weeks_remaining=float(warning["weeks_remaining"]) if warning["weeks_remaining"] else None
-            )
+            if warning["warning_type"] == "expiry":
+                send_expiry_warning(
+                    item_name=warning["item_name"],
+                    days_to_expiry=warning["days_to_expiry"],
+                    expiry_date=str(warning["expiry_date"]) if warning["expiry_date"] else None
+                )
+            else:
+                send_inventory_warning(
+                    item_name=warning["item_name"],
+                    current=float(warning["current_quantity"]),
+                    weeks_remaining=float(warning["weeks_remaining"]) if warning["weeks_remaining"] else None
+                )
     finally:
         db.close()
 

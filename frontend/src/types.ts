@@ -3,24 +3,35 @@ export interface Cat {
   name: string;
   breed: string;
   gender: 'Male' | 'Female';
+  birthday: string;
   ageYears: number;
   ageMonths: number;
   weight: number; // in kg
   avatarUrl: string;
-  guardian: string;
   description: string;
   createdAt: string;
 }
 
-export type SupplyCategory = 'Food' | 'Treat' | 'Litter' | 'Medical' | 'Other';
+export interface InventoryCategory {
+  id: string;
+  name: string;
+  icon: string;
+  sortOrder: number;
+}
 
 export interface SupplyItem {
   id: string;
   name: string;
-  category: SupplyCategory;
+  categoryId: string | null;
+  categoryName: string;
+  categoryIcon: string;
   stockAmount: number;
   unit: string; // e.g. "袋", "罐", "kg", "盒"
   minThreshold: number; // Low stock warning below this
+  dailyConsumption: number;
+  productionDate: string;
+  shelfLifeDays: number;
+  expiryWarningDays: number;
   note: string;
   lastUpdated: string;
 }
@@ -31,7 +42,11 @@ export interface RoutineTask {
   title: string;
   intervalDays: number; // interval in days, e.g. 7 for weekly, 30 for monthly, 90 for quarterly
   lastCompletedDate: string | null; // YYYY-MM-DD
-  nextDueDate: string; // YYYY-MM-DD
+  nextDueDate: string; // YYYY-MM-DDTHH:mm
+  completionTarget: number;
+  completedCount: number;
+  linkedItemId: string;
+  linkedItemQuantity: number;
   note: string;
 }
 
@@ -42,3 +57,11 @@ export interface WeightRecord {
   weight: number;
 }
 
+export interface TaskCompletion {
+  id: string;
+  taskId: string;
+  completedAt: string;
+  notes: string;
+  linkedItemId: string;
+  deductedQuantity: number;
+}

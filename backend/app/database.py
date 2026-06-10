@@ -22,15 +22,35 @@ def get_db():
 def ensure_schema_updates():
     """Apply tiny compatibility updates for databases created before this version."""
     inspector = inspect(engine)
-    if "bark_configs" not in inspector.get_table_names():
-        return
+    table_names = inspector.get_table_names()
 
-    existing_columns = {column["name"] for column in inspector.get_columns("bark_configs")}
     statements = []
-    if "enable_low_stock" not in existing_columns:
-        statements.append("ALTER TABLE bark_configs ADD COLUMN enable_low_stock BOOLEAN DEFAULT TRUE")
-    if "enable_overdue" not in existing_columns:
-        statements.append("ALTER TABLE bark_configs ADD COLUMN enable_overdue BOOLEAN DEFAULT TRUE")
+
+    def add_missing_columns(table_name: str, columns: dict):
+        if table_name not in table_names:
+            return
+        existing_columns = {column["name"] for column in inspector.get_columns(table_name)}
+        for column_name, ddl in columns.items():
+            if column_name not in existing_columns:
+                statements.append(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {ddl}")
+
+    add_missing_columns("bark_configs", {
+        "enable_low_stock": "BOOLEAN DEFAULT TRUE",
+        "enable_overdue": "BOOLEAN DEFAULT TRUE",
+        "expiry_warning_days": "INTEGER DEFAULT 7",
+    })
+    add_missing_columns("inventory", {
+        "daily_consumption": "NUMERIC(10, 2) DEFAULT 0",
+        "expiry_warning_days": "INTEGER DEFAULT 7",
+        "production_date": "DATE",
+        "shelf_life_days": "INTEGER",
+    })
+    add_missing_columns("tasks", {
+        "completion_target": "INTEGER DEFAULT 0",
+        "completed_count": "INTEGER DEFAULT 0",
+        "linked_item_id": "INTEGER",
+        "linked_item_quantity": "NUMERIC(10, 2) DEFAULT 0",
+    })
 
     if statements:
         with engine.begin() as connection:
