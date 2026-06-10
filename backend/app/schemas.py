@@ -259,6 +259,8 @@ class InventoryWarning(BaseModel):
 class BarkConfigBase(BaseModel):
     bark_key: str = Field(..., min_length=1, max_length=255)
     bark_server: Optional[str] = Field(default="https://api.day.app", max_length=255)
+    enable_low_stock: bool = True
+    enable_overdue: bool = True
 
 
 class BarkConfigCreate(BarkConfigBase):
@@ -268,6 +270,8 @@ class BarkConfigCreate(BarkConfigBase):
 class BarkConfigUpdate(BaseModel):
     bark_key: Optional[str] = Field(None, min_length=1, max_length=255)
     bark_server: Optional[str] = Field(None, max_length=255)
+    enable_low_stock: Optional[bool] = None
+    enable_overdue: Optional[bool] = None
 
 
 class BarkConfigResponse(BarkConfigBase):
@@ -277,3 +281,9 @@ class BarkConfigResponse(BarkConfigBase):
 
     class Config:
         from_attributes = True
+
+
+class BarkNotificationRequest(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200)
+    body: str = Field(..., min_length=1, max_length=1000)
+    sound: Optional[str] = Field(default="bell", max_length=50)

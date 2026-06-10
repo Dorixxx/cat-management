@@ -1,56 +1,54 @@
-# 🐱 猫咪管理系统 API
+# 猫咪管理系统
 
-纯后端 API 服务，基于 FastAPI + PostgreSQL。
+一个小型全栈猫咪管理应用，单仓库管理前端和后端。
+
+- 后端：FastAPI + SQLAlchemy + PostgreSQL
+- 前端：React + Vite + Tailwind CSS
+- 通知：Bark 推送配置存储在后端数据库中，前端设置页负责配置
 
 ## 功能
 
-- **🐈 猫咪档案**：增删改查、体重记录
-- **⏰ 任务提醒**：周期性任务、Bark 推送
-- **📦 库存管理**：分类、消耗、预警
-- **💰 花费统计**：分类/月度分析
-- **🔔 Bark 推送配置**：前端传入、数据库存储
+- 猫咪档案：增删改查、体重记录
+- 定期计划：护理任务、到期提醒、完成后自动顺延
+- 日用备件：库存分类、库存调整、低库存预警
+- 花费统计：后端已提供花费记录和统计接口
+- Bark 推送：保存配置、测试推送、服务端定时提醒
 
-## 配置
+## 项目结构
 
-环境变量通过 `.env` 文件管理：
+```text
+cat-management/
+├── backend/
+│   ├── requirements.txt
+│   └── app/
+│       ├── main.py              # FastAPI 入口
+│       ├── config.py            # 后端配置
+│       ├── database.py          # 数据库连接和兼容更新
+│       ├── models.py            # SQLAlchemy 模型
+│       ├── schemas.py           # Pydantic 请求/响应模型
+│       ├── crud.py              # 数据库操作
+│       ├── routers/             # API 路由
+│       └── services/            # Bark 和定时任务
+├── frontend/
+│   ├── server.ts                # Express + Vite，本地代理 /api/*
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── src/
+│       ├── App.tsx
+│       ├── components/
+│       └── utils/
+├── Dockerfile                   # 后端容器构建
+├── docker-compose.prod.yml
+├── .env.example                 # 后端环境变量
+└── README.md
+```
+
+## 本地开发
+
+### 1. 启动后端
 
 ```bash
 cp .env.example .env
-# 编辑 .env 填写实际值
-```
-
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `DATABASE_URL` | PostgreSQL 连接字符串 | Zeabur 自动注入 |
-
-## Bark 推送配置
-
-Bark 配置由前端传入，存储在数据库中：
-
-- **获取配置**：`GET /api/bark-config/`
-- **设置配置**：`POST /api/bark-config/` （body: `{bark_key, bark_server}`）
-- **更新配置**：`PUT /api/bark-config/`
-
-设置后，任务提醒和库存预警会自动通过 Bark 推送到手机。
-
-## 快速启动
-
-### Docker Compose
-
-```bash
-# 1. 配置环境变量
-cp .env.example .env
-
-# 2. 启动服务
-docker compose -f docker-compose.prod.yml up -d
-
-# 3. 访问 API 文档
-open http://localhost:8000/docs
-```
-
-### 本地开发
-
-```bash
 cd backend
 python3 -m venv venv
 source venv/bin/activate
@@ -58,46 +56,62 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-## Zeabur 部署（GitHub）
+默认后端地址是 `http://127.0.0.1:8000`。
 
-1. Fork 本仓库或推送到你的 GitHub
-2. 在 [Zeabur](https://zeabur.com) 选择 **Deploy from GitHub**
-3. 选择本仓库，Zeabur 会自动检测根目录 `Dockerfile` 并构建
-4. 添加 **PostgreSQL** 服务并绑定到后端服务（自动注入 `DATABASE_URL`）
-5. 访问 `https://你的域名.zeabur.app/docs` 查看 API 文档
-6. 通过 `/api/bark-config/` 接口设置 Bark 推送配置
+### 2. 启动前端
 
-## API 文档
+```bash
+cd frontend
+cp .env.example .env
+npm install
+npm run dev
+```
 
-启动后访问：
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+默认前端地址是 `http://127.0.0.1:3000`，`/api/*` 会代理到 `BACKEND_BASE_URL`。
+
+## 环境变量
+
+后端根目录 `.env`：
+
+| 变量 | 说明 | 默认值 |
+| --- | --- | --- |
+| `DATABASE_URL` | PostgreSQL 连接字符串 | `postgresql://postgres:postgres@localhost:5432/cat_management` |
+
+前端 `frontend/.env`：
+
+| 变量 | 说明 | 默认值 |
+| --- | --- | --- |
+| `PORT` | 前端 Express/Vite 服务端口 | `3000` |
+| `BACKEND_BASE_URL` | 前端代理转发目标 | `http://127.0.0.1:8000` |
+
+## API
+
+启动后端后访问：
+
+- Swagger UI: `http://127.0.0.1:8000/docs`
+- ReDoc: `http://127.0.0.1:8000/redoc`
 - 健康检查: `GET /api/health`
 
-## 项目结构
+主要接口：
 
+- `GET/POST /api/cats/`
+- `GET/PUT/DELETE /api/cats/{cat_id}`
+- `GET/POST /api/cats/{cat_id}/weights`
+- `GET/POST /api/tasks/`
+- `POST /api/tasks/{task_id}/complete`
+- `GET/POST /api/inventory/categories`
+- `GET/POST /api/inventory/items`
+- `GET /api/inventory/warnings`
+- `GET/POST /api/expenses/`
+- `GET /api/expenses/stats/summary`
+- `GET/POST/PUT /api/bark-config/`
+- `POST /api/bark-config/test`
+
+## Docker Compose
+
+```bash
+cp .env.example .env
+docker compose -f docker-compose.prod.yml up -d
 ```
-cat-management/
-├── Dockerfile                 # Zeabur / Docker 构建入口
-├── docker-compose.prod.yml    # 生产环境编排
-├── .env.example               # 环境变量模板
-├── README.md
-└── backend/
-    ├── requirements.txt
-    └── app/
-        ├── main.py            # FastAPI 入口
-        ├── config.py          # 集中配置管理
-        ├── database.py        # 数据库连接
-        ├── models.py          # SQLAlchemy 模型
-        ├── schemas.py         # Pydantic 校验
-        ├── crud.py            # 数据库操作
-        ├── routers/           # API 路由
-        │   ├── cats.py
-        │   ├── tasks.py
-        │   ├── inventory.py
-        │   ├── expenses.py
-        │   └── bark_config.py # Bark 推送配置
-        └── services/
-            ├── bark.py        # Bark 推送（从数据库读取配置）
-            └── scheduler.py   # 定时任务
-```
+
+Compose 会启动 PostgreSQL 和后端服务。前端仍建议单独在 `frontend/` 启动或按部署平台独立配置。

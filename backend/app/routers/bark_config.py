@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from .. import schemas, crud
 from ..database import get_db
+from ..services.bark import send_notification
 
 router = APIRouter(prefix="/bark-config", tags=["Bark 推送配置"])
 
@@ -29,3 +30,16 @@ def update_config(config: schemas.BarkConfigUpdate, db: Session = Depends(get_db
     if not db_config:
         raise HTTPException(status_code=404, detail="未配置 Bark 推送，请先创建")
     return db_config
+
+
+@router.post("/test")
+def test_notification(payload: schemas.BarkNotificationRequest):
+    """使用当前 Bark 配置发送测试推送"""
+    ok = send_notification(
+        title=payload.title,
+        body=payload.body,
+        sound=payload.sound or "bell"
+    )
+    if not ok:
+        raise HTTPException(status_code=400, detail="Bark 推送失败，请检查配置")
+    return {"message": "推送成功"}

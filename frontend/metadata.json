@@ -1,0 +1,6 @@
+{
+  "name": "猫咪健康成长管理系统",
+  "description": "一款全面的猫咪成长健康守护系统。支持个性档案建立、历史体重测定与可视化趋势走势图、日常及医护行为日志记录，并配备多种生动有趣的亲密互动小玩具。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

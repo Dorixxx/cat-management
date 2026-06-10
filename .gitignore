@@ -17,6 +17,13 @@ build/
 
 # 环境变量（包含敏感信息）
 .env
+frontend/.env
+frontend/.env.local
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
 
 # IDE
 .vscode/

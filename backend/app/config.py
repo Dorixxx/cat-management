@@ -15,7 +15,7 @@ class Settings:
     # 数据库
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL", 
-        "postgresql://root:YVki3h4R7LHZ9oj8JT05y2Mve6Dm1EfK@43.156.171.106:32595/zeabur"
+        "postgresql://postgres:postgres@localhost:5432/cat_management"
     )
     
     # 应用信息

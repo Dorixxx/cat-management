@@ -14,6 +14,10 @@ def check_tasks():
     """检查即将到期的任务并发送提醒"""
     db = SessionLocal()
     try:
+        config = crud.get_bark_config(db)
+        if not config or not config.enable_overdue:
+            return
+
         # 检查未来30分钟内到期的任务
         tasks = crud.get_due_tasks(db, minutes=30)
         for task in tasks:
@@ -32,6 +36,10 @@ def check_inventory():
     """检查库存预警"""
     db = SessionLocal()
     try:
+        config = crud.get_bark_config(db)
+        if not config or not config.enable_low_stock:
+            return
+
         warnings = crud.get_inventory_warnings(db)
         for warning in warnings:
             send_inventory_warning(

@@ -124,5 +124,7 @@ class BarkConfig(Base):
     id = Column(Integer, primary_key=True, index=True)
     bark_key = Column(String(255), nullable=False)
     bark_server = Column(String(255), default="https://api.day.app")
+    enable_low_stock = Column(Boolean, default=True)
+    enable_overdue = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)

@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from .database import engine, Base
+from .database import engine, Base, ensure_schema_updates
 from .routers import cats, tasks, inventory, expenses, bark_config
 from .services.scheduler import start_scheduler, shutdown_scheduler
 
@@ -11,6 +11,7 @@ from .services.scheduler import start_scheduler, shutdown_scheduler
 async def lifespan(app: FastAPI):
     # 启动时创建数据库表
     Base.metadata.create_all(bind=engine)
+    ensure_schema_updates()
     # 启动定时任务
     start_scheduler()
     yield
