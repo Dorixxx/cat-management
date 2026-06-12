@@ -10,6 +10,10 @@ from .bark import send_task_reminder, send_inventory_warning, send_expiry_warnin
 scheduler = BackgroundScheduler()
 
 
+def _task_cycle_key(task) -> str:
+    return task.next_due_date.replace(second=0, microsecond=0).isoformat()
+
+
 def check_tasks():
     """检查即将到期的任务并发送提醒"""
     db = SessionLocal()
@@ -18,16 +22,33 @@ def check_tasks():
         if not config or not config.enable_overdue:
             return
 
+        limit = 1 if config.task_notification_limit is None else max(0, int(config.task_notification_limit))
+        if limit == 0:
+            return
+
         # 检查未来30分钟内到期的任务
         tasks = crud.get_due_tasks(db, minutes=30)
         for task in tasks:
             cat_name = task.cat.name if task.cat else None
-            if task.bark_enabled:
-                send_task_reminder(
+            if not task.bark_enabled:
+                continue
+
+            cycle_key = _task_cycle_key(task)
+            if task.reminder_cycle_key != cycle_key:
+                task.reminder_cycle_key = cycle_key
+                task.reminder_sent_count = 0
+
+            if (task.reminder_sent_count or 0) >= limit:
+                continue
+
+            sent = send_task_reminder(
                     task_title=task.title,
                     task_description=task.description,
                     cat_name=cat_name
                 )
+            if sent:
+                task.reminder_sent_count = (task.reminder_sent_count or 0) + 1
+                db.commit()
     finally:
         db.close()
 

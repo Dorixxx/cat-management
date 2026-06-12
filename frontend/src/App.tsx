@@ -92,31 +92,6 @@ export default function App() {
     syncAllFromBackend();
   }, [syncAllFromBackend]);
 
-  // Automated Overdue health task checker
-  useEffect(() => {
-    const config = getBarkConfig();
-    if (config.enableOverdue && config.deviceKey && tasks.length > 0) {
-      const today = new Date().toISOString().split('T')[0];
-      const overdueTasks = tasks.filter(t => t.nextDueDate.slice(0, 10) < today);
-      if (overdueTasks.length > 0) {
-        const lastAlertDay = localStorage.getItem('last_overdue_alert_day');
-        if (lastAlertDay !== today) {
-          localStorage.setItem('last_overdue_alert_day', today);
-          const taskTitles = overdueTasks.map(t => {
-            const catName = t.catId === 'all' ? '全家猫咪' : (cats.find(c => c.id === t.catId)?.name || '小猫');
-            return `【${catName}】${t.title}`;
-          }).join('、');
-          
-          sendBarkNotification(
-            '⏰ 喵主子健康计划逾期提醒',
-            `您有 ${overdueTasks.length} 项日程逾期未打卡，包含：${taskTitles}。请抽空前往系统帮宝贝完成并打卡！`,
-            config
-          );
-        }
-      }
-    }
-  }, [tasks, cats, activeTab]);
-
   // Modal controls
   const [selectedCatId, setSelectedCatId] = useState<string | null>(null);
   const [isAddCatOpen, setIsAddCatOpen] = useState(false);

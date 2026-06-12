@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { RoutineTask, Cat, SupplyItem } from '../types';
-import { Check, CalendarDays, Plus, Trash2, Edit3, X, Clock3, Link2, Repeat2, ClipboardList } from 'lucide-react';
+import { RoutineTask, Cat, SupplyItem, TaskCompletion } from '../types';
+import { Check, CalendarDays, Plus, Trash2, Edit3, X, Clock3, Link2, Repeat2, ClipboardList, History } from 'lucide-react';
+import { apiClient } from '../utils/apiClient';
 
 interface RoutineTasksProps {
   tasks: RoutineTask[];
@@ -251,6 +252,11 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
   const [linkedItemQuantity, setLinkedItemQuantity] = useState<number>(0);
   const [nextDueDate, setNextDueDate] = useState(() => toLocalDateTimeInput());
   const [note, setNote] = useState('');
+  const [historyTask, setHistoryTask] = useState<RoutineTask | null>(null);
+  const [isAllHistoryOpen, setIsAllHistoryOpen] = useState(false);
+  const [historyRecords, setHistoryRecords] = useState<TaskCompletion[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState('');
 
   const todayStr = new Date().toISOString().split('T')[0];
   const activeCronExpression = buildCronExpression(cronMode, cronHour, cronMinute, weeklyDays, monthlyDay, cronExpression);
@@ -409,7 +415,69 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
     setCronMinute(minute || '00');
   };
 
+  const openHistory = async (task: RoutineTask) => {
+    setHistoryTask(task);
+    setIsAllHistoryOpen(false);
+    setHistoryRecords([]);
+    setHistoryError('');
+    setIsHistoryLoading(true);
+    try {
+      const records = await apiClient.listTaskCompletions(task.id);
+      setHistoryRecords(records);
+    } catch (error) {
+      console.error('Failed to load task completions:', error);
+      setHistoryError('任务历史记录读取失败，请确认后端服务正常。');
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  };
+
+  const openAllHistory = async () => {
+    setHistoryTask(null);
+    setIsAllHistoryOpen(true);
+    setHistoryRecords([]);
+    setHistoryError('');
+    setIsHistoryLoading(true);
+    try {
+      const records = await apiClient.listAllTaskCompletions();
+      setHistoryRecords(records);
+    } catch (error) {
+      console.error('Failed to load all task completions:', error);
+      setHistoryError('任务历史记录读取失败，请确认后端服务正常。');
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  };
+
+  const formatDateTime = (value: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value.replace('T', ' ');
+    return date.toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const getSupplyName = (id: string) => {
+    const item = supplies.find(supply => supply.id === id);
+    return item ? item.name : '已删除物品';
+  };
+
+  const getSupplyUnit = (id: string) => {
+    const item = supplies.find(supply => supply.id === id);
+    return item ? item.unit : '';
+  };
+
+  const getTaskTitle = (id: string) => {
+    const task = tasks.find(item => item.id === id);
+    return task ? task.title : '已删除任务';
+  };
+
   const isFormOpen = showForm || isEditing !== null;
+  const isHistoryOpen = !!historyTask || isAllHistoryOpen;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6" id="routine-tasks-section">
@@ -460,6 +528,14 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
             </div>
 
             <div className="h-4 w-[1px] bg-stone-250 hidden sm:block mx-0.5" />
+
+            <button
+              onClick={openAllHistory}
+              className="text-[10px] font-bold px-3 py-1.5 rounded-md flex items-center gap-1 transition-all cursor-pointer bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200"
+            >
+              <History size={11} strokeWidth={2.5} />
+              <span>最近历史</span>
+            </button>
 
             <button
               onClick={() => setShowForm(true)}
@@ -563,6 +639,13 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
                       </button>
 
                       <div className="flex items-center border-l border-stone-100 pl-2">
+                        <button
+                          onClick={() => openHistory(task)}
+                          className="p-1.5 text-stone-400 hover:text-stone-700 rounded transition cursor-pointer"
+                          title="查看历史记录"
+                        >
+                          <History size={13} />
+                        </button>
                         <button
                           onClick={() => startEdit(task)}
                           className="p-1.5 text-stone-400 hover:text-stone-700 rounded transition cursor-pointer"
@@ -859,6 +942,66 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {isHistoryOpen && (
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl border border-stone-100 p-6 shadow-xl text-stone-700 text-xs font-sans w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3.5 mb-4">
+              <div>
+                <h3 className="font-extrabold text-stone-900 text-sm flex items-center gap-1.5 uppercase tracking-wide">
+                  <History size={14} className="text-amber-600" />
+                  {historyTask ? '任务历史记录' : '最近完成历史'}
+                </h3>
+                <p className="text-[10px] text-stone-400 mt-1">{historyTask ? historyTask.title : '按完成时间倒序展示最近 200 条记录'}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setHistoryTask(null);
+                  setIsAllHistoryOpen(false);
+                }}
+                className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {isHistoryLoading ? (
+              <div className="py-10 text-center text-stone-400 text-xs">正在读取历史记录...</div>
+            ) : historyError ? (
+              <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-4 text-amber-800 text-xs font-semibold">
+                {historyError}
+              </div>
+            ) : historyRecords.length === 0 ? (
+              <div className="py-10 text-center text-stone-400 text-xs">
+                还没有完成记录。完成一次任务后，这里会留下时间、备注和库存扣减信息。
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {historyRecords.map(record => (
+                  <div key={record.id} className="rounded-xl border border-stone-100 bg-stone-50/40 p-3.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <span className="text-xs font-extrabold text-stone-900">{formatDateTime(record.completedAt)}</span>
+                      {record.deductedQuantity > 0 && (
+                        <span className="text-[10px] font-bold text-teal-700 bg-teal-50 border border-teal-100 rounded-lg px-2 py-1">
+                          扣减 {getSupplyName(record.linkedItemId)} {record.deductedQuantity}{getSupplyUnit(record.linkedItemId)}
+                        </span>
+                      )}
+                    </div>
+                    {!historyTask && (
+                      <span className="text-[10px] font-bold text-stone-500 mt-2 inline-block">
+                        {getTaskTitle(record.taskId)}
+                      </span>
+                    )}
+                    <p className="text-[10px] text-stone-500 mt-2 leading-relaxed">
+                      {record.notes || '本次完成未填写备注。'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

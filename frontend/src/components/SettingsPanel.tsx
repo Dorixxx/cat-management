@@ -153,10 +153,29 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ onNotifySave }) =>
                     洗消、剪爪、驱虫日程到期/逾期提醒
                   </span>
                   <span className="text-[10px] text-stone-400 font-sans block mt-0.5">
-                    进入概览页或操作健康计划打卡时，对存在未办或越过预期应办计划的任务自动提醒到客户端。
+                    后端定时检查到期任务，并按下方次数上限发送提醒。
                   </span>
                 </div>
               </label>
+
+              <div className="pt-3 border-t border-stone-100">
+                <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1.5">
+                  每个任务每期最多提醒次数
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    value={config.taskNotificationLimit}
+                    onChange={(e) => setConfig({ ...config, taskNotificationLimit: Math.max(0, Number(e.target.value)) })}
+                    className="w-24 text-xs font-mono font-bold rounded-lg border border-stone-200 py-2 px-3 bg-white focus:border-amber-400 outline-hidden"
+                  />
+                  <span className="text-xs text-stone-500 font-semibold">次</span>
+                </div>
+                <span className="text-[10px] text-stone-400 font-sans block mt-1">
+                  默认 1 次。填 0 表示不发送任务到期提醒；任务完成并进入下一期后会重新计数。
+                </span>
+              </div>
 
               <div className="pt-3 border-t border-stone-100">
                 <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1.5">

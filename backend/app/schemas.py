@@ -73,6 +73,8 @@ class TaskBase(BaseModel):
     completion_target: int = Field(default=0, ge=0)
     linked_item_id: Optional[int] = None
     linked_item_quantity: Optional[Decimal] = Decimal("0")
+    reminder_sent_count: int = Field(default=0, ge=0)
+    reminder_cycle_key: Optional[str] = None
     bark_enabled: bool = True
 
 
@@ -92,6 +94,8 @@ class TaskUpdate(BaseModel):
     completion_target: Optional[int] = Field(None, ge=0)
     linked_item_id: Optional[int] = None
     linked_item_quantity: Optional[Decimal] = None
+    reminder_sent_count: Optional[int] = Field(None, ge=0)
+    reminder_cycle_key: Optional[str] = None
     is_active: Optional[bool] = None
     bark_enabled: Optional[bool] = None
     cat_id: Optional[int] = None
@@ -305,6 +309,7 @@ class BarkConfigBase(BaseModel):
     enable_low_stock: bool = True
     enable_overdue: bool = True
     expiry_warning_days: int = Field(default=7, ge=0)
+    task_notification_limit: int = Field(default=1, ge=0)
 
 
 class BarkConfigCreate(BarkConfigBase):
@@ -317,6 +322,7 @@ class BarkConfigUpdate(BaseModel):
     enable_low_stock: Optional[bool] = None
     enable_overdue: Optional[bool] = None
     expiry_warning_days: Optional[int] = Field(None, ge=0)
+    task_notification_limit: Optional[int] = Field(None, ge=0)
 
 
 class BarkConfigResponse(BarkConfigBase):

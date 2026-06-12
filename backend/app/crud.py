@@ -212,13 +212,12 @@ def get_tasks(db: Session, cat_id: Optional[int] = None, active_only: bool = Fal
 
 
 def get_due_tasks(db: Session, minutes: int = 30):
-    """获取即将到期的任务"""
+    """获取已经到期或即将到期的任务"""
     now = datetime.now()
     deadline = now + timedelta(minutes=minutes)
     return db.query(models.Task).filter(
         models.Task.is_active == True,
-        models.Task.next_due_date <= deadline,
-        models.Task.next_due_date >= now
+        models.Task.next_due_date <= deadline
     ).all()
 
 
@@ -284,6 +283,9 @@ def complete_task(db: Session, task_id: int, completion: Optional[schemas.TaskCo
 
     if db_task.completion_target and db_task.completed_count >= db_task.completion_target:
         db_task.is_active = False
+
+    db_task.reminder_sent_count = 0
+    db_task.reminder_cycle_key = None
     
     db.commit()
     db.refresh(db_task)
@@ -294,6 +296,12 @@ def get_task_completions(db: Session, task_id: int, skip: int = 0, limit: int = 
     return db.query(models.TaskCompletion).filter(
         models.TaskCompletion.task_id == task_id
     ).order_by(models.TaskCompletion.completed_at.desc()).offset(skip).limit(limit).all()
+
+
+def get_all_task_completions(db: Session, skip: int = 0, limit: int = 200):
+    return db.query(models.TaskCompletion).order_by(
+        models.TaskCompletion.completed_at.desc()
+    ).offset(skip).limit(limit).all()
 
 
 def delete_task(db: Session, task_id: int):

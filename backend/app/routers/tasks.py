@@ -18,6 +18,11 @@ def create_task(task: schemas.TaskCreate, db: Session = Depends(get_db)):
     return crud.create_task(db, task)
 
 
+@router.get("/completions/all", response_model=List[schemas.TaskCompletionResponse])
+def list_all_task_completions(skip: int = 0, limit: int = 200, db: Session = Depends(get_db)):
+    return crud.get_all_task_completions(db, skip=skip, limit=limit)
+
+
 @router.get("/{task_id}", response_model=schemas.TaskResponse)
 def get_task(task_id: int, db: Session = Depends(get_db)):
     db_task = crud.get_task(db, task_id)

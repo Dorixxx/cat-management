@@ -38,6 +38,7 @@ def ensure_schema_updates():
         "enable_low_stock": "BOOLEAN DEFAULT TRUE",
         "enable_overdue": "BOOLEAN DEFAULT TRUE",
         "expiry_warning_days": "INTEGER DEFAULT 7",
+        "task_notification_limit": "INTEGER DEFAULT 1",
     })
     add_missing_columns("inventory", {
         "daily_consumption": "NUMERIC(10, 2) DEFAULT 0",
@@ -52,6 +53,8 @@ def ensure_schema_updates():
         "linked_item_quantity": "NUMERIC(10, 2) DEFAULT 0",
         "schedule_type": "VARCHAR(20) DEFAULT 'interval'",
         "cron_expression": "VARCHAR(100)",
+        "reminder_sent_count": "INTEGER DEFAULT 0",
+        "reminder_cycle_key": "VARCHAR(80)",
     })
 
     if "cats" in table_names:

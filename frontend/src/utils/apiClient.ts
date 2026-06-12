@@ -234,6 +234,18 @@ export const apiClient = {
     }));
   },
 
+  async listAllTaskCompletions(): Promise<any[]> {
+    const rows = await apiFetch('/tasks/completions/all');
+    return rows.map((row: any) => ({
+      id: String(row.id),
+      taskId: String(row.task_id),
+      completedAt: row.completed_at,
+      notes: row.notes || '',
+      linkedItemId: row.linked_item_id ? String(row.linked_item_id) : '',
+      deductedQuantity: Number(row.deducted_quantity || 0)
+    }));
+  },
+
   async deleteTask(id: string): Promise<void> {
     await apiFetch(`/tasks/${id}`, {
       method: 'DELETE'

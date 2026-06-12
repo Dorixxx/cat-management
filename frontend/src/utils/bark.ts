@@ -4,6 +4,7 @@ export interface BarkConfig {
   enableLowStock: boolean;
   enableOverdue: boolean;
   expiryWarningDays: number;
+  taskNotificationLimit: number;
 }
 
 const STORAGE_KEY = 'felinescape_v2_bark_config';
@@ -18,8 +19,9 @@ export const getBarkConfig = (): BarkConfig => {
         serverUrl: parsed.serverUrl || 'https://api.day.app',
         deviceKey: parsed.deviceKey || '',
         enableLowStock: !!parsed.enableLowStock,
-        enableOverdue: !!parsed.enableOverdue,
+        enableOverdue: parsed.enableOverdue !== false,
         expiryWarningDays: Number(parsed.expiryWarningDays || 7),
+        taskNotificationLimit: Math.max(0, Number(parsed.taskNotificationLimit ?? 1)),
       };
     } catch (e) {
       // fallback
@@ -29,8 +31,9 @@ export const getBarkConfig = (): BarkConfig => {
     serverUrl: 'https://api.day.app',
     deviceKey: '',
     enableLowStock: false,
-    enableOverdue: false,
+    enableOverdue: true,
     expiryWarningDays: 7,
+    taskNotificationLimit: 1,
   };
 };
 
@@ -40,6 +43,7 @@ const toBackendPayload = (config: BarkConfig) => ({
   enable_low_stock: config.enableLowStock,
   enable_overdue: config.enableOverdue,
   expiry_warning_days: config.expiryWarningDays || 7,
+  task_notification_limit: Math.max(0, Number(config.taskNotificationLimit ?? 1)),
 });
 
 const fromBackendPayload = (payload: any): BarkConfig => ({
@@ -48,6 +52,7 @@ const fromBackendPayload = (payload: any): BarkConfig => ({
   enableLowStock: !!payload.enable_low_stock,
   enableOverdue: !!payload.enable_overdue,
   expiryWarningDays: Number(payload.expiry_warning_days || 7),
+  taskNotificationLimit: Math.max(0, Number(payload.task_notification_limit ?? 1)),
 });
 
 export const saveBarkConfigLocal = (config: BarkConfig): void => {
