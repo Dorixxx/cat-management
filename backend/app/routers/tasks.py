@@ -1,9 +1,11 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from .. import schemas, crud
 from ..database import get_db
+from ..time_utils import to_utc_naive
 
 router = APIRouter(prefix="/tasks", tags=["任务提醒"])
 
@@ -19,8 +21,26 @@ def create_task(task: schemas.TaskCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/completions/all", response_model=List[schemas.TaskCompletionResponse])
-def list_all_task_completions(skip: int = 0, limit: int = 200, db: Session = Depends(get_db)):
-    return crud.get_all_task_completions(db, skip=skip, limit=limit)
+def list_all_task_completions(
+    skip: int = 0,
+    limit: int = 500,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    task_id: Optional[int] = None,
+    schedule_type: Optional[str] = None,
+    severity: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    return crud.get_all_task_completions(
+        db,
+        skip=skip,
+        limit=limit,
+        start_date=to_utc_naive(start_date) if start_date else None,
+        end_date=to_utc_naive(end_date) if end_date else None,
+        task_id=task_id,
+        schedule_type=schedule_type,
+        severity=severity,
+    )
 
 
 @router.get("/{task_id}", response_model=schemas.TaskResponse)

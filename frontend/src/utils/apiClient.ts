@@ -3,6 +3,14 @@ export interface ApiConfig {
   apiBaseUrl: string; // e.g., "http://localhost:8000"
 }
 
+export interface TaskCompletionFilters {
+  startDate?: string;
+  endDate?: string;
+  taskId?: string;
+  scheduleType?: 'temporary' | 'interval' | 'cron';
+  severity?: 'normal' | 'warning' | 'abnormal';
+}
+
 const formatLocalDate = (date = new Date()): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -225,12 +233,13 @@ export const apiClient = {
     });
   },
 
-  async completeTask(id: string, notes = ''): Promise<any> {
+  async completeTask(id: string, notes = '', severity: 'normal' | 'warning' | 'abnormal' = 'normal'): Promise<any> {
     const response = await apiFetch(`/tasks/${id}/complete`, {
       method: 'POST',
       body: JSON.stringify({
         completed_at: new Date().toISOString(),
-        notes
+        notes,
+        severity
       })
     });
     return response;
@@ -243,18 +252,28 @@ export const apiClient = {
       taskId: String(row.task_id),
       completedAt: toLocalDateTimeInput(row.completed_at),
       notes: row.notes || '',
+      severity: row.severity || 'normal',
       linkedItemId: row.linked_item_id ? String(row.linked_item_id) : '',
       deductedQuantity: Number(row.deducted_quantity || 0)
     }));
   },
 
-  async listAllTaskCompletions(): Promise<any[]> {
-    const rows = await apiFetch('/tasks/completions/all');
+  async listAllTaskCompletions(filters: TaskCompletionFilters = {}): Promise<any[]> {
+    const params = new URLSearchParams();
+    if (filters.startDate) params.set('start_date', `${filters.startDate}:00+08:00`);
+    if (filters.endDate) params.set('end_date', `${filters.endDate}:59+08:00`);
+    if (filters.taskId) params.set('task_id', filters.taskId);
+    if (filters.scheduleType) params.set('schedule_type', filters.scheduleType);
+    if (filters.severity) params.set('severity', filters.severity);
+
+    const query = params.toString();
+    const rows = await apiFetch(`/tasks/completions/all${query ? `?${query}` : ''}`);
     return rows.map((row: any) => ({
       id: String(row.id),
       taskId: String(row.task_id),
       completedAt: toLocalDateTimeInput(row.completed_at),
       notes: row.notes || '',
+      severity: row.severity || 'normal',
       linkedItemId: row.linked_item_id ? String(row.linked_item_id) : '',
       deductedQuantity: Number(row.deducted_quantity || 0)
     }));

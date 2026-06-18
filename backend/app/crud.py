@@ -266,6 +266,7 @@ def complete_task(db: Session, task_id: int, completion: Optional[schemas.TaskCo
         task_id=task_id,
         completed_at=completed_at,
         notes=completion.notes if completion else None,
+        severity=(completion.severity if completion and completion.severity else "normal"),
         linked_item_id=db_task.linked_item_id,
         deducted_quantity=deducted_quantity
     )
@@ -303,8 +304,30 @@ def get_task_completions(db: Session, task_id: int, skip: int = 0, limit: int = 
     ).order_by(models.TaskCompletion.completed_at.desc()).offset(skip).limit(limit).all()
 
 
-def get_all_task_completions(db: Session, skip: int = 0, limit: int = 200):
-    return db.query(models.TaskCompletion).order_by(
+def get_all_task_completions(
+    db: Session,
+    skip: int = 0,
+    limit: int = 500,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    task_id: Optional[int] = None,
+    schedule_type: Optional[str] = None,
+    severity: Optional[str] = None,
+):
+    query = db.query(models.TaskCompletion).join(models.Task, models.TaskCompletion.task_id == models.Task.id)
+
+    if start_date is not None:
+        query = query.filter(models.TaskCompletion.completed_at >= start_date)
+    if end_date is not None:
+        query = query.filter(models.TaskCompletion.completed_at <= end_date)
+    if task_id is not None:
+        query = query.filter(models.TaskCompletion.task_id == task_id)
+    if schedule_type:
+        query = query.filter(models.Task.schedule_type == schedule_type)
+    if severity:
+        query = query.filter(models.TaskCompletion.severity == severity)
+
+    return query.order_by(
         models.TaskCompletion.completed_at.desc()
     ).offset(skip).limit(limit).all()
 

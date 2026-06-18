@@ -52,6 +52,8 @@ export interface RoutineTask {
   note: string;
 }
 
+export type TaskCompletionSeverity = 'normal' | 'warning' | 'abnormal';
+
 export interface WeightRecord {
   id: string;
   catId: string;
@@ -64,6 +66,7 @@ export interface TaskCompletion {
   taskId: string;
   completedAt: string;
   notes: string;
+  severity: TaskCompletionSeverity;
   linkedItemId: string;
   deductedQuantity: number;
 }

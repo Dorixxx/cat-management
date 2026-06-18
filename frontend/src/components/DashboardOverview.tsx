@@ -7,7 +7,7 @@ interface DashboardOverviewProps {
   supplies: SupplyItem[];
   tasks: RoutineTask[];
   weightRecords: WeightRecord[];
-  onNavigate: (tab: 'cats' | 'supplies' | 'tasks') => void;
+  onNavigate: (tab: 'cats' | 'supplies' | 'tasks' | 'history') => void;
 }
 
 export const DashboardOverview: React.FC<DashboardOverviewProps> = ({

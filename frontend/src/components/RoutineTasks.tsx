@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { RoutineTask, Cat, SupplyItem, TaskCompletion } from '../types';
-import { Check, CalendarDays, Plus, Trash2, Edit3, X, Clock3, Link2, Repeat2, ClipboardList, History } from 'lucide-react';
-import { apiClient } from '../utils/apiClient';
+import { RoutineTask, Cat, SupplyItem, TaskCompletionSeverity } from '../types';
+import { Check, CalendarDays, Plus, Trash2, Edit3, X, Clock3, Link2, Repeat2, ClipboardList } from 'lucide-react';
 
 interface RoutineTasksProps {
   tasks: RoutineTask[];
@@ -10,7 +9,7 @@ interface RoutineTasksProps {
   onAddTask: (task: Omit<RoutineTask, 'id' | 'lastCompletedDate'>) => void;
   onUpdateTask: (task: RoutineTask) => void;
   onDeleteTask: (id: string) => void;
-  onCompleteTask: (task: RoutineTask, notes?: string) => void;
+  onCompleteTask: (task: RoutineTask, notes?: string, severity?: TaskCompletionSeverity) => void;
 }
 
 type ScheduleKind = 'cron' | 'temporary';
@@ -49,6 +48,12 @@ const formatLocalDate = (date = new Date()) => {
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
+
+const completionSeverityOptions: Array<{ value: TaskCompletionSeverity; label: string; className: string }> = [
+  { value: 'normal', label: '正常', className: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
+  { value: 'warning', label: '警告', className: 'bg-amber-50 text-amber-800 border-amber-100' },
+  { value: 'abnormal', label: '异常', className: 'bg-rose-50 text-rose-700 border-rose-100' },
+];
 
 const padNumber = (value: number) => String(value).padStart(2, '0');
 
@@ -259,11 +264,9 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
   const [linkedItemQuantity, setLinkedItemQuantity] = useState<number>(0);
   const [nextDueDate, setNextDueDate] = useState(() => toLocalDateTimeInput());
   const [note, setNote] = useState('');
-  const [historyTask, setHistoryTask] = useState<RoutineTask | null>(null);
-  const [isAllHistoryOpen, setIsAllHistoryOpen] = useState(false);
-  const [historyRecords, setHistoryRecords] = useState<TaskCompletion[]>([]);
-  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
-  const [historyError, setHistoryError] = useState('');
+  const [completionTask, setCompletionTask] = useState<RoutineTask | null>(null);
+  const [completionNotes, setCompletionNotes] = useState('');
+  const [completionSeverity, setCompletionSeverity] = useState<TaskCompletionSeverity>('normal');
 
   const todayStr = formatLocalDate();
   const activeCronExpression = buildCronExpression(cronMode, cronHour, cronMinute, weeklyDays, monthlyDay, cronExpression);
@@ -422,69 +425,8 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
     setCronMinute(minute || '00');
   };
 
-  const openHistory = async (task: RoutineTask) => {
-    setHistoryTask(task);
-    setIsAllHistoryOpen(false);
-    setHistoryRecords([]);
-    setHistoryError('');
-    setIsHistoryLoading(true);
-    try {
-      const records = await apiClient.listTaskCompletions(task.id);
-      setHistoryRecords(records);
-    } catch (error) {
-      console.error('Failed to load task completions:', error);
-      setHistoryError('任务历史记录读取失败，请确认后端服务正常。');
-    } finally {
-      setIsHistoryLoading(false);
-    }
-  };
-
-  const openAllHistory = async () => {
-    setHistoryTask(null);
-    setIsAllHistoryOpen(true);
-    setHistoryRecords([]);
-    setHistoryError('');
-    setIsHistoryLoading(true);
-    try {
-      const records = await apiClient.listAllTaskCompletions();
-      setHistoryRecords(records);
-    } catch (error) {
-      console.error('Failed to load all task completions:', error);
-      setHistoryError('任务历史记录读取失败，请确认后端服务正常。');
-    } finally {
-      setIsHistoryLoading(false);
-    }
-  };
-
-  const formatDateTime = (value: string) => {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value.replace('T', ' ');
-    return date.toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const getSupplyName = (id: string) => {
-    const item = supplies.find(supply => supply.id === id);
-    return item ? item.name : '已删除物品';
-  };
-
-  const getSupplyUnit = (id: string) => {
-    const item = supplies.find(supply => supply.id === id);
-    return item ? item.unit : '';
-  };
-
-  const getTaskTitle = (id: string) => {
-    const task = tasks.find(item => item.id === id);
-    return task ? task.title : '已删除任务';
-  };
-
   const isFormOpen = showForm || isEditing !== null;
-  const isHistoryOpen = !!historyTask || isAllHistoryOpen;
+  const isCompletionOpen = !!completionTask;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6" id="routine-tasks-section">
@@ -533,16 +475,6 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
                 ))}
               </select>
             </div>
-
-            <div className="h-4 w-[1px] bg-stone-250 hidden sm:block mx-0.5" />
-
-            <button
-              onClick={openAllHistory}
-              className="text-[10px] font-bold px-3 py-1.5 rounded-md flex items-center gap-1 transition-all cursor-pointer bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200"
-            >
-              <History size={11} strokeWidth={2.5} />
-              <span>最近历史</span>
-            </button>
 
             <button
               onClick={() => setShowForm(true)}
@@ -635,8 +567,9 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
                     <div className="flex items-center gap-2.5 self-end md:self-center shrink-0">
                       <button
                         onClick={() => {
-                          const notes = prompt('填写本次完成情况（可留空）') || '';
-                          onCompleteTask(task, notes);
+                          setCompletionTask(task);
+                          setCompletionNotes('');
+                          setCompletionSeverity('normal');
                         }}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition shadow-xs cursor-pointer select-none"
                         title="点击本期打卡"
@@ -646,13 +579,6 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
                       </button>
 
                       <div className="flex items-center border-l border-stone-100 pl-2">
-                        <button
-                          onClick={() => openHistory(task)}
-                          className="p-1.5 text-stone-400 hover:text-stone-700 rounded transition cursor-pointer"
-                          title="查看历史记录"
-                        >
-                          <History size={13} />
-                        </button>
                         <button
                           onClick={() => startEdit(task)}
                           className="p-1.5 text-stone-400 hover:text-stone-700 rounded transition cursor-pointer"
@@ -953,21 +879,22 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
         </div>
       )}
 
-      {isHistoryOpen && (
+      {isCompletionOpen && completionTask && (
         <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl border border-stone-100 p-6 shadow-xl text-stone-700 text-xs font-sans w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-2xl border border-stone-100 p-6 shadow-xl text-stone-700 text-xs font-sans w-full max-w-lg animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3.5 mb-4">
               <div>
                 <h3 className="font-extrabold text-stone-900 text-sm flex items-center gap-1.5 uppercase tracking-wide">
-                  <History size={14} className="text-amber-600" />
-                  {historyTask ? '任务历史记录' : '最近完成历史'}
+                  <Check size={14} className="text-emerald-600" />
+                  完成任务记录
                 </h3>
-                <p className="text-[10px] text-stone-400 mt-1">{historyTask ? historyTask.title : '按完成时间倒序展示最近 200 条记录'}</p>
+                <p className="text-[10px] text-stone-400 mt-1">{completionTask.title}</p>
               </div>
               <button
                 onClick={() => {
-                  setHistoryTask(null);
-                  setIsAllHistoryOpen(false);
+                  setCompletionTask(null);
+                  setCompletionNotes('');
+                  setCompletionSeverity('normal');
                 }}
                 className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition"
               >
@@ -975,40 +902,67 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
               </button>
             </div>
 
-            {isHistoryLoading ? (
-              <div className="py-10 text-center text-stone-400 text-xs">正在读取历史记录...</div>
-            ) : historyError ? (
-              <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-4 text-amber-800 text-xs font-semibold">
-                {historyError}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">
+                  本次记录级别
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {completionSeverityOptions.map(option => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setCompletionSeverity(option.value)}
+                      className={`rounded-xl border px-3 py-2 text-[11px] font-bold transition cursor-pointer ${
+                        completionSeverity === option.value
+                          ? option.className
+                          : 'border-stone-200 bg-stone-50 text-stone-500 hover:bg-stone-100'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            ) : historyRecords.length === 0 ? (
-              <div className="py-10 text-center text-stone-400 text-xs">
-                还没有完成记录。完成一次任务后，这里会留下时间、备注和库存扣减信息。
+
+              <div>
+                <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">
+                  完成情况备注
+                </label>
+                <textarea
+                  value={completionNotes}
+                  onChange={(e) => setCompletionNotes(e.target.value)}
+                  placeholder="可填写本次护理结果、异常表现、剂量调整等"
+                  className="w-full h-24 rounded-xl border border-stone-200 bg-stone-50/50 py-2.5 px-3 text-xs font-medium outline-hidden focus:bg-white focus:border-amber-400 resize-none"
+                />
               </div>
-            ) : (
-              <div className="space-y-3">
-                {historyRecords.map(record => (
-                  <div key={record.id} className="rounded-xl border border-stone-100 bg-stone-50/40 p-3.5">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <span className="text-xs font-extrabold text-stone-900">{formatDateTime(record.completedAt)}</span>
-                      {record.deductedQuantity > 0 && (
-                        <span className="text-[10px] font-bold text-teal-700 bg-teal-50 border border-teal-100 rounded-lg px-2 py-1">
-                          扣减 {getSupplyName(record.linkedItemId)} {record.deductedQuantity}{getSupplyUnit(record.linkedItemId)}
-                        </span>
-                      )}
-                    </div>
-                    {!historyTask && (
-                      <span className="text-[10px] font-bold text-stone-500 mt-2 inline-block">
-                        {getTaskTitle(record.taskId)}
-                      </span>
-                    )}
-                    <p className="text-[10px] text-stone-500 mt-2 leading-relaxed">
-                      {record.notes || '本次完成未填写备注。'}
-                    </p>
-                  </div>
-                ))}
+
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCompletionTask(null);
+                    setCompletionNotes('');
+                    setCompletionSeverity('normal');
+                  }}
+                  className="flex-1 border border-stone-200 text-stone-600 hover:bg-stone-50 rounded-xl py-2.5 text-xs font-bold transition cursor-pointer"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onCompleteTask(completionTask, completionNotes, completionSeverity);
+                    setCompletionTask(null);
+                    setCompletionNotes('');
+                    setCompletionSeverity('normal');
+                  }}
+                  className="flex-1 bg-stone-950 hover:bg-stone-800 text-white rounded-xl py-2.5 text-xs font-bold transition cursor-pointer"
+                >
+                  确认完成
+                </button>
               </div>
-            )}
+            </div>
           </div>
         </div>
       )}

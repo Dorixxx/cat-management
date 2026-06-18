@@ -74,6 +74,7 @@ class TaskCompletion(Base):
     task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
     completed_at = Column(DateTime, default=utc_now_naive)
     notes = Column(Text)
+    severity = Column(String(20), default="normal")
     linked_item_id = Column(Integer, ForeignKey("inventory.id", ondelete="SET NULL"), nullable=True)
     deducted_quantity = Column(Numeric(10, 2), default=0)
     created_at = Column(DateTime, default=utc_now_naive)

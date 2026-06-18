@@ -116,6 +116,7 @@ class TaskResponse(TaskBase):
 class TaskCompleteRequest(BaseModel):
     completed_at: Optional[datetime] = None
     notes: Optional[str] = None
+    severity: Optional[str] = Field(default="normal", pattern="^(normal|warning|abnormal)$")
 
 
 class TaskCompletionResponse(BaseModel):
@@ -123,6 +124,7 @@ class TaskCompletionResponse(BaseModel):
     task_id: int
     completed_at: datetime
     notes: Optional[str]
+    severity: str
     linked_item_id: Optional[int]
     deducted_quantity: Decimal
     created_at: datetime

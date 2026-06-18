@@ -56,6 +56,9 @@ def ensure_schema_updates():
         "reminder_sent_count": "INTEGER DEFAULT 0",
         "reminder_cycle_key": "VARCHAR(80)",
     })
+    add_missing_columns("task_completions", {
+        "severity": "VARCHAR(20) DEFAULT 'normal'",
+    })
 
     if "cats" in table_names:
         avatar_column = next(

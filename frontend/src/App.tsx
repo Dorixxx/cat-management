@@ -9,7 +9,8 @@ import { SuppliesInventory } from './components/SuppliesInventory';
 import { RoutineTasks } from './components/RoutineTasks';
 import { DashboardOverview } from './components/DashboardOverview';
 import { SettingsPanel } from './components/SettingsPanel';
-import { Plus, Package, CalendarClock, Cat as CatIcon, RefreshCw, Sparkles, HelpCircle, Home, Settings, WifiOff } from 'lucide-react';
+import { TaskHistory } from './components/TaskHistory';
+import { Plus, Package, CalendarClock, Cat as CatIcon, RefreshCw, Sparkles, HelpCircle, Home, Settings, WifiOff, History } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getBarkConfig, sendBarkNotification } from './utils/bark';
 import { apiClient } from './utils/apiClient';
@@ -41,7 +42,7 @@ export default function App() {
   // -----------------------------------------
   // UI NAVIGATION SWITCHER STATE
   // -----------------------------------------
-  const [activeTab, setActiveTab] = useState<'overview' | 'cats' | 'supplies' | 'tasks' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'cats' | 'supplies' | 'tasks' | 'history' | 'settings'>('overview');
 
   // -----------------------------------------
   // BACKEND API SYNC ENGINE
@@ -311,12 +312,12 @@ export default function App() {
   };
 
   // Automated Routine Completion Engine
-  const handleCompleteTaskCycle = async (task: RoutineTask, notes = '') => {
+  const handleCompleteTaskCycle = async (task: RoutineTask, notes = '', severity: 'normal' | 'warning' | 'abnormal' = 'normal') => {
     const today = formatLocalDate();
     const calculatedNext = addDaysStr(today, task.intervalDays);
 
     try {
-      await apiClient.completeTask(task.id, notes);
+      await apiClient.completeTask(task.id, notes, severity);
       await syncAllFromBackend();
       return;
     } catch (e) {
@@ -423,6 +424,17 @@ export default function App() {
               >
                 <CalendarClock size={13} />
                 <span>定期计划 ({tasks.length})</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('history')}
+                className={`px-2.5 py-1.5 md:py-5 font-bold text-[11px] md:text-xs flex items-center gap-1.5 transition border-b-2 cursor-pointer shrink-0 ${
+                  activeTab === 'history'
+                    ? 'border-stone-950 text-stone-950 font-extrabold'
+                    : 'border-transparent text-stone-400 hover:text-stone-600'
+                }`}
+              >
+                <History size={13} />
+                <span>任务历史</span>
               </button>
               <button
                 onClick={() => setActiveTab('settings')}
@@ -540,6 +552,13 @@ export default function App() {
               onUpdateTask={handleUpdateTask}
               onDeleteTask={handleDeleteTask}
               onCompleteTask={handleCompleteTaskCycle}
+            />
+          )}
+
+          {activeTab === 'history' && (
+            <TaskHistory
+              tasks={tasks}
+              supplies={supplies}
             />
           )}
 
