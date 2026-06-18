@@ -21,12 +21,19 @@ export const CatDetailsModal: React.FC<CatDetailsModalProps> = ({
   onAddWeight,
   onDeleteCat,
 }) => {
+  const formatLocalDate = (date = new Date()) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [activeTab, setActiveTab] = useState<'dossier' | 'vitals' | 'tasks'>('dossier');
 
   // Form states for Weight
   const [newWeight, setNewWeight] = useState('');
   const [newWeightDate, setNewWeightDate] = useState(() => {
-    return new Date().toISOString().split('T')[0];
+    return formatLocalDate();
   });
 
   // Filter weights & tasks specifically for this cat
@@ -415,7 +422,7 @@ export const CatDetailsModal: React.FC<CatDetailsModalProps> = ({
                 ) : (
                   <div className="space-y-3">
                     {catTasks.map(task => {
-                      const today = new Date().toISOString().split('T')[0];
+                      const today = formatLocalDate();
                       const isOverdue = task.nextDueDate.slice(0, 10) < today;
                       
                       return (

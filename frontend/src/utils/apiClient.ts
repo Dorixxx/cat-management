@@ -3,6 +3,20 @@ export interface ApiConfig {
   apiBaseUrl: string; // e.g., "http://localhost:8000"
 }
 
+const formatLocalDate = (date = new Date()): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const hasTimezoneInfo = (value: string): boolean => /(?:Z|[+-]\d{2}:\d{2})$/i.test(value);
+
+const parseApiDateTime = (value: string): Date => {
+  if (!value) return new Date();
+  return new Date(hasTimezoneInfo(value) ? value : `${value}Z`);
+};
+
 export const getApiConfig = (): ApiConfig => {
   return {
     enableApiMode: true,
@@ -121,7 +135,7 @@ export const apiClient = {
         id: String(r.id),
         catId: String(r.cat_id),
         weight: Number(r.weight),
-        date: r.record_date || new Date().toISOString().split('T')[0]
+        date: r.record_date || formatLocalDate()
       }));
     } catch (e) {
       console.warn('Weights fetch error/not found, fallback to empty', e);
@@ -227,7 +241,7 @@ export const apiClient = {
     return rows.map((row: any) => ({
       id: String(row.id),
       taskId: String(row.task_id),
-      completedAt: row.completed_at,
+      completedAt: toLocalDateTimeInput(row.completed_at),
       notes: row.notes || '',
       linkedItemId: row.linked_item_id ? String(row.linked_item_id) : '',
       deductedQuantity: Number(row.deducted_quantity || 0)
@@ -239,7 +253,7 @@ export const apiClient = {
     return rows.map((row: any) => ({
       id: String(row.id),
       taskId: String(row.task_id),
-      completedAt: row.completed_at,
+      completedAt: toLocalDateTimeInput(row.completed_at),
       notes: row.notes || '',
       linkedItemId: row.linked_item_id ? String(row.linked_item_id) : '',
       deductedQuantity: Number(row.deducted_quantity || 0)
@@ -373,7 +387,7 @@ function calculateAge(birthdayStr: string): { years: number; months: number } {
 }
 
 function toLocalDateTimeInput(value: string): string {
-  const date = new Date(value);
+  const date = parseApiDateTime(value);
   if (Number.isNaN(date.getTime())) return value.slice(0, 16);
   const offsetMs = date.getTimezoneOffset() * 60 * 1000;
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
@@ -383,7 +397,7 @@ function calculateBirthday(years: number, months: number): string {
   const date = new Date();
   date.setFullYear(date.getFullYear() - years);
   date.setMonth(date.getMonth() - months);
-  return date.toISOString().split('T')[0];
+  return formatLocalDate(date);
 }
 
 // Map inventory category names to backend Categories (create on demand)

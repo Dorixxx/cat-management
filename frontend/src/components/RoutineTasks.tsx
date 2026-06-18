@@ -43,6 +43,13 @@ const toLocalDateTimeInput = (date = new Date()) => {
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 };
 
+const formatLocalDate = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const padNumber = (value: number) => String(value).padStart(2, '0');
 
 const normalizeWeekdayToken = (token: string) => {
@@ -258,7 +265,7 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState('');
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = formatLocalDate();
   const activeCronExpression = buildCronExpression(cronMode, cronHour, cronMinute, weeklyDays, monthlyDay, cronExpression);
   const cronNextRun = useMemo(() => {
     if (scheduleKind !== 'cron' || !activeCronExpression) return null;

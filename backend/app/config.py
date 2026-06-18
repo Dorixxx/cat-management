@@ -4,6 +4,7 @@
 """
 import os
 from urllib.parse import quote_plus
+from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 
@@ -61,6 +62,11 @@ class Settings:
     # 应用信息
     APP_NAME: str = "🐱 猫咪管理系统"
     APP_VERSION: str = "1.1.0"
+    APP_TIMEZONE: str = os.getenv("APP_TIMEZONE", "Asia/Shanghai")
+
+    @property
+    def TZINFO(self) -> ZoneInfo:
+        return ZoneInfo(self.APP_TIMEZONE)
 
 
 # 全局配置实例

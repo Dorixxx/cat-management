@@ -5,6 +5,7 @@ from datetime import datetime, date, timedelta
 from decimal import Decimal
 
 from . import models, schemas
+from .time_utils import local_now_naive, to_utc_naive, utc_naive_to_local_naive, utc_now_naive
 
 
 CRON_DOW_NAMES = {
@@ -121,11 +122,11 @@ def get_next_due_from_cron(expression: Optional[str], from_time: datetime) -> Op
     except (TypeError, ValueError):
         return None
 
-    candidate = from_time.replace(second=0, microsecond=0) + timedelta(minutes=1)
+    candidate = utc_naive_to_local_naive(from_time).replace(second=0, microsecond=0) + timedelta(minutes=1)
     deadline = candidate + timedelta(days=732)
     while candidate <= deadline:
         if _cron_matches(candidate, parsed_cron):
-            return candidate
+            return to_utc_naive(candidate)
         candidate += timedelta(minutes=1)
     return None
 
@@ -213,7 +214,7 @@ def get_tasks(db: Session, cat_id: Optional[int] = None, active_only: bool = Fal
 
 def get_due_tasks(db: Session, minutes: int = 30):
     """获取已经到期或即将到期的任务"""
-    now = datetime.now()
+    now = utc_now_naive()
     deadline = now + timedelta(minutes=minutes)
     return db.query(models.Task).filter(
         models.Task.is_active == True,
@@ -222,7 +223,9 @@ def get_due_tasks(db: Session, minutes: int = 30):
 
 
 def create_task(db: Session, task: schemas.TaskCreate):
-    db_task = models.Task(**task.model_dump())
+    task_data = task.model_dump()
+    task_data["next_due_date"] = to_utc_naive(task.next_due_date)
+    db_task = models.Task(**task_data)
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
@@ -234,6 +237,8 @@ def update_task(db: Session, task_id: int, task: schemas.TaskUpdate):
     if not db_task:
         return None
     update_data = task.model_dump(exclude_unset=True)
+    if "next_due_date" in update_data and task.next_due_date is not None:
+        update_data["next_due_date"] = to_utc_naive(task.next_due_date)
     for key, value in update_data.items():
         setattr(db_task, key, value)
     db.commit()
@@ -247,7 +252,7 @@ def complete_task(db: Session, task_id: int, completion: Optional[schemas.TaskCo
     if not db_task:
         return None
 
-    completed_at = completion.completed_at if completion and completion.completed_at else datetime.now()
+    completed_at = to_utc_naive(completion.completed_at) if completion and completion.completed_at else utc_now_naive()
     deducted_quantity = db_task.linked_item_quantity or Decimal("0")
 
     if db_task.linked_item_id and deducted_quantity > 0:

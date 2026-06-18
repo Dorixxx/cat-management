@@ -19,7 +19,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 }) => {
   const totalCats = cats.length;
   const totalSupplies = supplies.length;
-  const todayStr = new Date().toISOString().split('T')[0];
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
   // Supplies analysis
   const lowStockSupplies = supplies.filter(s => s.stockAmount < s.minThreshold);

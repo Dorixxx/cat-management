@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from ..database import SessionLocal
 from .. import crud
 from .bark import send_task_reminder, send_inventory_warning, send_expiry_warning
+from ..time_utils import local_now_naive, to_utc_naive, utc_now_naive
 
 scheduler = BackgroundScheduler(
     job_defaults={
@@ -107,7 +108,7 @@ def start_scheduler():
     # 每天上午9点检查库存
     scheduler.add_job(
         check_inventory,
-        trigger=IntervalTrigger(hours=24, start_date=datetime.now().replace(hour=9, minute=0, second=0)),
+        trigger=IntervalTrigger(hours=24, start_date=to_utc_naive(local_now_naive().replace(hour=9, minute=0, second=0, microsecond=0))),
         id="check_inventory",
         replace_existing=True
     )

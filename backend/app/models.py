@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Float, DateTime, Date, Boolean, 
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
+from .time_utils import utc_now_naive
 
 
 class Cat(Base):
@@ -16,8 +17,8 @@ class Cat(Base):
     color = Column(String(50))
     avatar = Column(Text)  # 头像URL或上传后的图片地址
     notes = Column(Text)
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     weight_records = relationship("WeightRecord", back_populates="cat", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="cat", cascade="all, delete-orphan")
@@ -32,7 +33,7 @@ class WeightRecord(Base):
     weight = Column(Numeric(5, 2), nullable=False)
     record_date = Column(Date, default=datetime.now)
     notes = Column(Text)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=utc_now_naive)
 
     cat = relationship("Cat", back_populates="weight_records")
 
@@ -58,8 +59,8 @@ class Task(Base):
     reminder_cycle_key = Column(String(80))
     is_active = Column(Boolean, default=True)
     bark_enabled = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     cat = relationship("Cat", back_populates="tasks")
     linked_item = relationship("Inventory")
@@ -71,11 +72,11 @@ class TaskCompletion(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
-    completed_at = Column(DateTime, default=datetime.now)
+    completed_at = Column(DateTime, default=utc_now_naive)
     notes = Column(Text)
     linked_item_id = Column(Integer, ForeignKey("inventory.id", ondelete="SET NULL"), nullable=True)
     deducted_quantity = Column(Numeric(10, 2), default=0)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=utc_now_naive)
 
     task = relationship("Task", back_populates="completion_records")
     linked_item = relationship("Inventory")
@@ -88,7 +89,7 @@ class InventoryCategory(Base):
     name = Column(String(100), nullable=False, unique=True)
     icon = Column(String(50), default="📦")
     sort_order = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=utc_now_naive)
 
     items = relationship("Inventory", back_populates="category", cascade="all, delete-orphan")
 
@@ -112,8 +113,8 @@ class Inventory(Base):
     purchase_url = Column(String(500))
     notes = Column(Text)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     category = relationship("InventoryCategory", back_populates="items")
     consumption_records = relationship("ConsumptionRecord", back_populates="item", cascade="all, delete-orphan")
@@ -127,7 +128,7 @@ class ConsumptionRecord(Base):
     quantity = Column(Numeric(10, 2), nullable=False)
     record_date = Column(Date, default=datetime.now)
     notes = Column(Text)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=utc_now_naive)
 
     item = relationship("Inventory", back_populates="consumption_records")
 
@@ -142,7 +143,7 @@ class Expense(Base):
     expense_date = Column(Date, default=datetime.now)
     description = Column(String(500))
     merchant = Column(String(200))
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=utc_now_naive)
 
     cat = relationship("Cat", back_populates="expenses")
 
@@ -157,5 +158,5 @@ class BarkConfig(Base):
     enable_overdue = Column(Boolean, default=True)
     expiry_warning_days = Column(Integer, default=7)
     task_notification_limit = Column(Integer, default=1)
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)

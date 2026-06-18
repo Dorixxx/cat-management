@@ -12,7 +12,8 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cats, supplies, ta
   const totalCats = cats.length;
   const totalSupplies = supplies.length;
   const lowStockCount = supplies.filter(s => s.stockAmount < s.minThreshold).length;
-  const todayStr = new Date().toISOString().split('T')[0];
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const dueOrOverdueTasks = tasks.filter(t => t.nextDueDate.slice(0, 10) <= todayStr).length;
 
   return (

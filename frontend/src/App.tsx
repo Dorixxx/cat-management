@@ -15,10 +15,17 @@ import { getBarkConfig, sendBarkNotification } from './utils/bark';
 import { apiClient } from './utils/apiClient';
 
 // Help date calculator
+const formatLocalDate = (date = new Date()): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const addDaysStr = (dateStr: string, days: number): string => {
   const date = new Date(dateStr);
   date.setDate(date.getDate() + days);
-  return date.toISOString().split('T')[0];
+  return formatLocalDate(date);
 };
 
 export default function App() {
@@ -146,7 +153,7 @@ export default function App() {
         const newId = await apiClient.createCat(catData);
         if (newId) {
           try {
-            await apiClient.createWeight(newId, catData.weight, new Date().toISOString().split('T')[0]);
+            await apiClient.createWeight(newId, catData.weight, formatLocalDate());
           } catch (weightError) {
             console.error("API createWeight after createCat failed:", weightError);
           }
@@ -305,7 +312,7 @@ export default function App() {
 
   // Automated Routine Completion Engine
   const handleCompleteTaskCycle = async (task: RoutineTask, notes = '') => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatLocalDate();
     const calculatedNext = addDaysStr(today, task.intervalDays);
 
     try {
