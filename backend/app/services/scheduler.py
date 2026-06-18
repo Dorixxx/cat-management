@@ -1,13 +1,19 @@
+import os
+
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 
 from ..database import SessionLocal
 from .. import crud
 from .bark import send_task_reminder, send_inventory_warning, send_expiry_warning
 
-scheduler = BackgroundScheduler()
+scheduler = BackgroundScheduler(
+    job_defaults={
+        "coalesce": True,
+        "max_instances": 1,
+    }
+)
 
 
 def _task_cycle_key(task) -> str:
@@ -81,6 +87,15 @@ def check_inventory():
 
 def start_scheduler():
     """启动定时任务调度器"""
+    enabled = os.getenv("ENABLE_SCHEDULER", "true").strip().lower()
+    if enabled not in {"1", "true", "yes", "on"}:
+        print("[Scheduler] 定时任务调度器已禁用")
+        return
+
+    if scheduler.running:
+        print("[Scheduler] 定时任务调度器已在运行，跳过重复启动")
+        return
+
     # 每5分钟检查一次任务
     scheduler.add_job(
         check_tasks,
@@ -103,5 +118,6 @@ def start_scheduler():
 
 def shutdown_scheduler():
     """关闭定时任务调度器"""
-    scheduler.shutdown()
-    print("[Scheduler] 定时任务调度器已关闭")
+    if scheduler.running:
+        scheduler.shutdown()
+        print("[Scheduler] 定时任务调度器已关闭")

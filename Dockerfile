@@ -31,4 +31,4 @@ COPY --from=frontend-build /frontend/dist ./static/
 EXPOSE 8080
 
 # 启动命令
-CMD ["sh", "-c", "gunicorn app.main:app -w 2 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8080} --access-logfile -"]
+CMD ["sh", "-c", "gunicorn app.main:app -w ${WEB_CONCURRENCY:-1} -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8080} --access-logfile -"]
