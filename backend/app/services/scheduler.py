@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 
 from ..database import SessionLocal
-from .. import crud
+from .. import crud, models
 from .bark import send_task_reminder, send_inventory_warning
 
 scheduler = BackgroundScheduler()
@@ -17,7 +17,9 @@ def check_tasks():
         # 检查未来30分钟内到期的任务
         tasks = crud.get_due_tasks(db, minutes=30)
         for task in tasks:
-            cat_name = task.cat.name if task.cat else None
+            target_cat_ids = crud._target_cat_ids(db, task)
+            cats = db.query(models.Cat).filter(models.Cat.id.in_(target_cat_ids)).all() if target_cat_ids else []
+            cat_name = "、".join(cat.name for cat in cats) if cats else None
             if task.bark_enabled:
                 send_task_reminder(
                     task_title=task.title,

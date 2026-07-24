@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func, extract
+from sqlalchemy import func, extract, or_, and_
 from typing import List, Optional
 from datetime import datetime, date, timedelta
 from decimal import Decimal
@@ -82,7 +82,12 @@ def get_task(db: Session, task_id: int):
 def get_tasks(db: Session, cat_id: Optional[int] = None, active_only: bool = False, skip: int = 0, limit: int = 100):
     query = db.query(models.Task)
     if cat_id is not None:
-        query = query.filter(models.Task.cat_id == cat_id)
+        # Include tasks selected for this cat and tasks that apply to all cats.
+        query = query.filter(or_(
+            models.Task.cat_id == cat_id,
+            models.Task.cats.any(models.Cat.id == cat_id),
+            and_(models.Task.cat_id.is_(None), ~models.Task.cats.any()),
+        ))
     if active_only:
         query = query.filter(models.Task.is_active == True)
     return query.order_by(models.Task.next_due_date).offset(skip).limit(limit).all()
@@ -100,7 +105,16 @@ def get_due_tasks(db: Session, minutes: int = 30):
 
 
 def create_task(db: Session, task: schemas.TaskCreate):
-    db_task = models.Task(**task.model_dump())
+    task_data = task.model_dump(exclude={"cat_ids"})
+    cat_ids = _validate_cat_ids(db, task.cat_ids)
+    # A new cat_ids request is the source of truth.  Do not set the legacy
+    # foreign key as well: deleting the first selected cat must not delete a
+    # task that still targets other cats.
+    if cat_ids:
+        task_data["cat_id"] = None
+    db_task = models.Task(**task_data)
+    if cat_ids:
+        db_task.cats = _get_cats_by_ids(db, cat_ids)
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
@@ -111,7 +125,11 @@ def update_task(db: Session, task_id: int, task: schemas.TaskUpdate):
     db_task = get_task(db, task_id)
     if not db_task:
         return None
-    update_data = task.model_dump(exclude_unset=True)
+    update_data = task.model_dump(exclude_unset=True, exclude={"cat_ids"})
+    if "cat_ids" in task.model_fields_set:
+        cat_ids = _validate_cat_ids(db, task.cat_ids or [])
+        db_task.cats = _get_cats_by_ids(db, cat_ids)
+        update_data["cat_id"] = None
     for key, value in update_data.items():
         setattr(db_task, key, value)
     db.commit()
@@ -119,18 +137,82 @@ def update_task(db: Session, task_id: int, task: schemas.TaskUpdate):
     return db_task
 
 
-def complete_task(db: Session, task_id: int):
-    """完成任务并更新下次到期时间"""
+def _get_cats_by_ids(db: Session, cat_ids: List[int]):
+    if not cat_ids:
+        return []
+    cats = db.query(models.Cat).filter(models.Cat.id.in_(cat_ids)).all()
+    by_id = {cat.id: cat for cat in cats}
+    return [by_id[cat_id] for cat_id in cat_ids]
+
+
+def _validate_cat_ids(db: Session, cat_ids: List[int]):
+    unique_ids = list(dict.fromkeys(cat_ids))
+    if len(unique_ids) != len(cat_ids):
+        raise ValueError("任务对象中包含重复的猫咪")
+    if unique_ids and db.query(models.Cat.id).filter(models.Cat.id.in_(unique_ids)).count() != len(unique_ids):
+        raise ValueError("任务对象中包含不存在的猫咪")
+    return unique_ids
+
+
+def _target_cat_ids(db: Session, task: models.Task):
+    if task.cats:
+        return [cat.id for cat in task.cats]
+    if task.cat_id is not None:
+        return [task.cat_id]
+    # No explicit target means every cat, including cats added later.
+    return [cat.id for cat in db.query(models.Cat.id).order_by(models.Cat.id).all()]
+
+
+def _advance_task(task: models.Task):
+    if task.frequency_days > 0:
+        task.next_due_date = datetime.now() + timedelta(days=task.frequency_days)
+    else:
+        task.is_active = False
+
+
+def complete_task(db: Session, task_id: int, cat_id: Optional[int] = None):
+    """Complete one cat, advancing only after every target has completed."""
     db_task = get_task(db, task_id)
     if not db_task:
         return None
-    
-    if db_task.frequency_days > 0:
-        # 周期性任务，更新下次到期时间
-        db_task.next_due_date = datetime.now() + timedelta(days=db_task.frequency_days)
+
+    target_cat_ids = _target_cat_ids(db, db_task)
+    cycle_due_date = db_task.next_due_date
+    if cat_id is not None:
+        if cat_id not in target_cat_ids:
+            raise ValueError("该猫咪不是此任务的对象")
+        cats_to_complete = [cat_id]
     else:
-        # 一次性任务，标记为不活跃
-        db_task.is_active = False
+        # Retain the previous endpoint behaviour for clients that submit no body.
+        cats_to_complete = target_cat_ids
+
+    for completed_cat_id in cats_to_complete:
+        already_completed = db.query(models.TaskCompletion.id).filter(
+            models.TaskCompletion.task_id == db_task.id,
+            models.TaskCompletion.cat_id == completed_cat_id,
+            models.TaskCompletion.cycle_due_date == cycle_due_date,
+        ).first()
+        if not already_completed:
+            db.add(models.TaskCompletion(
+                task_id=db_task.id,
+                cat_id=completed_cat_id,
+                cycle_due_date=cycle_due_date,
+            ))
+
+    db.flush()
+    if not target_cat_ids:
+        # An all-cats task with no cats currently registered can still be
+        # completed as a whole.
+        _advance_task(db_task)
+    else:
+        completed_ids = {
+            record.cat_id for record in db.query(models.TaskCompletion).filter(
+                models.TaskCompletion.task_id == db_task.id,
+                models.TaskCompletion.cycle_due_date == cycle_due_date,
+            ).all()
+        }
+        if set(target_cat_ids).issubset(completed_ids):
+            _advance_task(db_task)
     
     db.commit()
     db.refresh(db_task)

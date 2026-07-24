@@ -1,7 +1,21 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Date, Boolean, Text, ForeignKey, Numeric
+from sqlalchemy import (
+    Column, Integer, String, Float, DateTime, Date, Boolean, Text, ForeignKey,
+    Numeric, Table, UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
+
+
+# A task can apply to one, several, or (when this table has no row for the
+# task) every cat.  Keeping Task.cat_id below makes the change backwards
+# compatible with clients and existing databases that used the old field.
+task_cats = Table(
+    "task_cats",
+    Base.metadata,
+    Column("task_id", Integer, ForeignKey("tasks.id", ondelete="CASCADE"), primary_key=True),
+    Column("cat_id", Integer, ForeignKey("cats.id", ondelete="CASCADE"), primary_key=True),
+)
 
 
 class Cat(Base):
@@ -21,6 +35,8 @@ class Cat(Base):
 
     weight_records = relationship("WeightRecord", back_populates="cat", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="cat", cascade="all, delete-orphan")
+    targeted_tasks = relationship("Task", secondary=task_cats, back_populates="cats")
+    task_completions = relationship("TaskCompletion", back_populates="cat", cascade="all, delete-orphan")
     expenses = relationship("Expense", back_populates="cat", cascade="all, delete-orphan")
 
 
@@ -54,6 +70,45 @@ class Task(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     cat = relationship("Cat", back_populates="tasks")
+    cats = relationship("Cat", secondary=task_cats, back_populates="targeted_tasks")
+    completions = relationship("TaskCompletion", back_populates="task", cascade="all, delete-orphan")
+
+    @property
+    def cat_ids(self):
+        """IDs explicitly selected for this task (empty means all cats)."""
+        if self.cats:
+            return [cat.id for cat in self.cats]
+        return [self.cat_id] if self.cat_id is not None else []
+
+    @property
+    def is_all_cats(self):
+        return not self.cats and self.cat_id is None
+
+    @property
+    def completed_cat_ids(self):
+        """Cats completed during the task's current due-date cycle."""
+        return [
+            completion.cat_id
+            for completion in self.completions
+            if completion.cycle_due_date == self.next_due_date
+        ]
+
+
+class TaskCompletion(Base):
+    """Completion of a single cat for one task occurrence."""
+    __tablename__ = "task_completions"
+    __table_args__ = (
+        UniqueConstraint("task_id", "cat_id", "cycle_due_date", name="uq_task_cat_cycle"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
+    cat_id = Column(Integer, ForeignKey("cats.id", ondelete="CASCADE"), nullable=False)
+    cycle_due_date = Column(DateTime, nullable=False)
+    completed_at = Column(DateTime, default=datetime.now, nullable=False)
+
+    task = relationship("Task", back_populates="completions")
+    cat = relationship("Cat", back_populates="task_completions")
 
 
 class InventoryCategory(Base):
