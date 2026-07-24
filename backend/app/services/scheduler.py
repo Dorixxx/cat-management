@@ -5,7 +5,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime, timedelta
 
 from ..database import SessionLocal
-from .. import crud
+from .. import crud, models
 from .bark import send_task_reminder, send_inventory_warning, send_expiry_warning
 from ..time_utils import local_now_naive, to_utc_naive, utc_now_naive
 
@@ -36,7 +36,9 @@ def check_tasks():
         # 检查未来30分钟内到期的任务
         tasks = crud.get_due_tasks(db, minutes=30)
         for task in tasks:
-            cat_name = task.cat.name if task.cat else None
+            target_ids = crud.get_task_target_cat_ids(db, task)
+            cats = db.query(models.Cat).filter(models.Cat.id.in_(target_ids)).all() if target_ids else []
+            cat_name = "、".join(cat.name for cat in cats) if cats else None
             if not task.bark_enabled:
                 continue
 

@@ -1,8 +1,14 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Date, Boolean, Text, ForeignKey, Numeric
+from sqlalchemy import Column, Integer, String, Float, DateTime, Date, Boolean, Text, ForeignKey, Numeric, Table, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
 from .time_utils import utc_now_naive
+
+task_cats = Table(
+    "task_cats", Base.metadata,
+    Column("task_id", Integer, ForeignKey("tasks.id", ondelete="CASCADE"), primary_key=True),
+    Column("cat_id", Integer, ForeignKey("cats.id", ondelete="CASCADE"), primary_key=True),
+)
 
 
 class Cat(Base):
@@ -22,6 +28,7 @@ class Cat(Base):
 
     weight_records = relationship("WeightRecord", back_populates="cat", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="cat", cascade="all, delete-orphan")
+    targeted_tasks = relationship("Task", secondary=task_cats, back_populates="cats")
     expenses = relationship("Expense", back_populates="cat", cascade="all, delete-orphan")
 
 
@@ -63,8 +70,35 @@ class Task(Base):
     updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     cat = relationship("Cat", back_populates="tasks")
+    cats = relationship("Cat", secondary=task_cats, back_populates="targeted_tasks")
     linked_item = relationship("Inventory")
     completion_records = relationship("TaskCompletion", back_populates="task", cascade="all, delete-orphan")
+    cat_completions = relationship("TaskCatCompletion", back_populates="task", cascade="all, delete-orphan")
+
+    @property
+    def cat_ids(self):
+        return [cat.id for cat in self.cats] if self.cats else ([self.cat_id] if self.cat_id is not None else [])
+
+    @property
+    def is_all_cats(self):
+        return not self.cats and self.cat_id is None
+
+    @property
+    def completed_cat_ids(self):
+        return [entry.cat_id for entry in self.cat_completions if entry.cycle_due_date == self.next_due_date]
+
+
+class TaskCatCompletion(Base):
+    __tablename__ = "task_cat_completions"
+    __table_args__ = (UniqueConstraint("task_id", "cat_id", "cycle_due_date", name="uq_task_cat_cycle"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
+    cat_id = Column(Integer, ForeignKey("cats.id", ondelete="CASCADE"), nullable=False)
+    cycle_due_date = Column(DateTime, nullable=False)
+    completed_at = Column(DateTime, default=utc_now_naive, nullable=False)
+
+    task = relationship("Task", back_populates="cat_completions")
 
 
 class TaskCompletion(Base):

@@ -39,6 +39,8 @@ export interface SupplyItem {
 export interface RoutineTask {
   id: string;
   catId: string; // Specific cat ID, or 'All' for general tasks
+  catIds: string[]; // Empty means every cat
+  completedCatIds: string[];
   title: string;
   intervalDays: number; // interval in days, e.g. 7 for weekly, 30 for monthly, 90 for quarterly
   scheduleType: 'temporary' | 'interval' | 'cron';

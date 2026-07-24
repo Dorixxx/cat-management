@@ -17,7 +17,10 @@ def list_tasks(cat_id: Optional[int] = None, active_only: bool = False, db: Sess
 
 @router.post("/", response_model=schemas.TaskResponse)
 def create_task(task: schemas.TaskCreate, db: Session = Depends(get_db)):
-    return crud.create_task(db, task)
+    try:
+        return crud.create_task(db, task)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
 
 @router.get("/completions/all", response_model=List[schemas.TaskCompletionResponse])
@@ -53,7 +56,10 @@ def get_task(task_id: int, db: Session = Depends(get_db)):
 
 @router.put("/{task_id}", response_model=schemas.TaskResponse)
 def update_task(task_id: int, task: schemas.TaskUpdate, db: Session = Depends(get_db)):
-    db_task = crud.update_task(db, task_id, task)
+    try:
+        db_task = crud.update_task(db, task_id, task)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     if not db_task:
         raise HTTPException(status_code=404, detail="任务不存在")
     return db_task
@@ -65,7 +71,10 @@ def complete_task(
     completion: Optional[schemas.TaskCompleteRequest] = None,
     db: Session = Depends(get_db)
 ):
-    db_task = crud.complete_task(db, task_id, completion or schemas.TaskCompleteRequest())
+    try:
+        db_task = crud.complete_task(db, task_id, completion or schemas.TaskCompleteRequest())
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     if not db_task:
         raise HTTPException(status_code=404, detail="任务不存在")
     return db_task

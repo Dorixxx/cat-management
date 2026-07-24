@@ -9,7 +9,7 @@ interface RoutineTasksProps {
   onAddTask: (task: Omit<RoutineTask, 'id' | 'lastCompletedDate'>) => void;
   onUpdateTask: (task: RoutineTask) => void;
   onDeleteTask: (id: string) => void;
-  onCompleteTask: (task: RoutineTask, notes?: string, severity?: TaskCompletionSeverity) => void;
+  onCompleteTask: (task: RoutineTask, catId?: string, notes?: string, severity?: TaskCompletionSeverity) => void;
 }
 
 type ScheduleKind = 'cron' | 'temporary';
@@ -250,7 +250,7 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
 
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [title, setTitle] = useState('');
-  const [catId, setCatId] = useState('all');
+  const [catIds, setCatIds] = useState<string[]>([]);
   const [scheduleKind, setScheduleKind] = useState<ScheduleKind>('cron');
   const [cronMode, setCronMode] = useState<CronMode>('weekly');
   const [cronHour, setCronHour] = useState('09');
@@ -267,6 +267,7 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
   const [completionTask, setCompletionTask] = useState<RoutineTask | null>(null);
   const [completionNotes, setCompletionNotes] = useState('');
   const [completionSeverity, setCompletionSeverity] = useState<TaskCompletionSeverity>('normal');
+  const [completionCatId, setCompletionCatId] = useState<string>('');
 
   const todayStr = formatLocalDate();
   const activeCronExpression = buildCronExpression(cronMode, cronHour, cronMinute, weeklyDays, monthlyDay, cronExpression);
@@ -299,7 +300,9 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
 
     const payload = {
       title: title.trim(),
-      catId,
+      catId: catIds.length === 1 ? catIds[0] : 'all',
+      catIds,
+      completedCatIds: [],
       intervalDays: scheduleKind === 'cron' ? getCronIntervalDays() : 0,
       scheduleType: scheduleKind === 'cron' ? 'cron' as const : 'temporary' as const,
       cronExpression: finalCronExpression,
@@ -332,7 +335,7 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
     const isTemporary = task.scheduleType === 'temporary' || task.intervalDays === 0;
     setIsEditing(task.id);
     setTitle(task.title);
-    setCatId(task.catId);
+    setCatIds(task.catIds || (task.catId === 'all' ? [] : [task.catId]));
     setScheduleKind(isTemporary ? 'temporary' : 'cron');
     setCronMode(inferred.mode);
     setCronHour(inferred.hour);
@@ -352,7 +355,7 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
   const resetForm = () => {
     setIsEditing(null);
     setTitle('');
-    setCatId('all');
+    setCatIds([]);
     setScheduleKind('cron');
     setCronMode('weekly');
     setCronHour('09');
@@ -404,7 +407,7 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
       return task.nextDueDate.slice(0, 10) < todayStr;
     }
     if (typeof targetFilter === 'object' && targetFilter.catId) {
-      return task.catId === targetFilter.catId;
+      return task.catIds?.length ? task.catIds.includes(targetFilter.catId) : true;
     }
     return true;
   });
@@ -492,7 +495,7 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
             <p className="text-xs">目前暂无符合筛选要求的护理任务。</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {filteredTasks
               .sort((a,b) => a.nextDueDate.localeCompare(b.nextDueDate))
               .map(task => {
@@ -504,7 +507,7 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
                   <div
                     key={task.id}
                     id={`task-item-${task.id}`}
-                    className={`bg-white rounded-xl border p-4 shadow-[0_1px_2.5px_rgba(0,0,0,0.01)] flex flex-col md:flex-row gap-4 items-start md:items-center justify-between transition-all hover:border-amber-100/60 ${
+                    className={`bg-white rounded-xl border p-4 shadow-[0_1px_2.5px_rgba(0,0,0,0.01)] flex flex-col gap-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${
                       isOverdue
                         ? 'border-rose-250 bg-rose-500/[0.01]'
                         : isDueToday
@@ -515,11 +518,11 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
                     <div className="flex-1 space-y-1.5 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                          task.catId === 'all'
+                          !task.catIds?.length
                             ? 'bg-stone-100 text-stone-600 border border-stone-200'
                             : 'bg-amber-50 text-amber-700 border border-amber-100'
                         }`}>
-                          猫咪 {getCatName(task.catId)}
+                          猫咪 {task.catIds?.length ? task.catIds.map(getCatName).join('、') : '全体猫咪'}
                         </span>
                         <span className="text-[9px] font-semibold text-stone-500 border border-stone-200/60 px-1.5 py-0.5 rounded bg-stone-50 max-w-full truncate">
                           {formatSchedule(task)}
@@ -564,12 +567,13 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2.5 self-end md:self-center shrink-0">
+                    <div className="flex items-center gap-2.5 self-end shrink-0 border-t border-stone-100 pt-3 w-full justify-end">
                       <button
                         onClick={() => {
                           setCompletionTask(task);
                           setCompletionNotes('');
                           setCompletionSeverity('normal');
+                          setCompletionCatId(task.catIds?.length === 1 ? task.catIds[0] : '');
                         }}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition shadow-xs cursor-pointer select-none"
                         title="点击本期打卡"
@@ -665,16 +669,13 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
                 <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">
                   关联对象 *
                 </label>
-                <select
-                  value={catId}
-                  onChange={(e) => setCatId(e.target.value)}
-                  className="w-full text-xs font-bold rounded-lg border border-stone-200 py-2.5 px-2 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition"
-                >
-                  <option value="all">全屋猫咪 / 公共日常任务</option>
+                <div className="rounded-xl border border-stone-200 bg-stone-50/50 p-2 flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setCatIds([])} className={`rounded-lg px-3 py-2 text-[11px] font-bold border ${catIds.length === 0 ? 'bg-stone-900 border-stone-900 text-white' : 'bg-white border-stone-200 text-stone-600'}`}>全部猫咪</button>
                   {cats.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
+                    <button key={c.id} type="button" onClick={() => setCatIds(ids => ids.includes(c.id) ? ids.filter(id => id !== c.id) : [...ids, c.id])} className={`rounded-lg px-3 py-2 text-[11px] font-bold border ${catIds.includes(c.id) ? 'bg-amber-100 border-amber-300 text-amber-900' : 'bg-white border-stone-200 text-stone-600'}`}>{c.name}</button>
                   ))}
-                </select>
+                </div>
+                <p className="mt-1 text-[10px] text-stone-400">可多选；未选择具体猫咪表示面向全部猫咪。</p>
               </div>
 
               {scheduleKind === 'cron' ? (
@@ -769,7 +770,7 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
                     <input
                       type="number"
                       min="0"
-                      value={completionTarget}
+                      value={completionTarget || ''}
                       onChange={(e) => setCompletionTarget(Math.max(0, Number(e.target.value)))}
                       className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-white focus:border-amber-400 outline-hidden transition"
                       placeholder="0 表示不限次数"
@@ -837,7 +838,7 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
                           type="number"
                           min="0"
                           step="0.01"
-                          value={linkedItemQuantity}
+                          value={linkedItemQuantity || ''}
                           onChange={(e) => setLinkedItemQuantity(Math.max(0, Number(e.target.value)))}
                           className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white focus:border-amber-400 outline-hidden transition"
                         />
@@ -903,6 +904,17 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
             </div>
 
             <div className="space-y-4">
+              {(completionTask.catIds?.length !== 1 || !completionTask.catIds?.length) && (
+                <div>
+                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">本次完成的猫咪</label>
+                  <div className="flex flex-wrap gap-2">
+                    {(completionTask.catIds?.length ? completionTask.catIds : cats.map(cat => cat.id)).map(catId => (
+                      <button key={catId} type="button" onClick={() => setCompletionCatId(catId)} className={`rounded-lg border px-3 py-2 text-[11px] font-bold ${completionCatId === catId ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-stone-200 text-stone-600'}`}>{getCatName(catId)}</button>
+                    ))}
+                  </div>
+                  <p className="mt-1 text-[10px] text-stone-400">逐只完成；全部目标完成后才会进入下一期。</p>
+                </div>
+              )}
               <div>
                 <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">
                   本次记录级别
@@ -952,10 +964,11 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    onCompleteTask(completionTask, completionNotes, completionSeverity);
+                    onCompleteTask(completionTask, completionCatId || completionTask.catIds?.[0], completionNotes, completionSeverity);
                     setCompletionTask(null);
                     setCompletionNotes('');
                     setCompletionSeverity('normal');
+                    setCompletionCatId('');
                   }}
                   className="flex-1 bg-stone-950 hover:bg-stone-800 text-white rounded-xl py-2.5 text-xs font-bold transition cursor-pointer"
                 >

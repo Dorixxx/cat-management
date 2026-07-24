@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func, extract
+from sqlalchemy import func, extract, or_, and_
 from typing import List, Optional
 from datetime import datetime, date, timedelta
 from decimal import Decimal
@@ -206,7 +206,11 @@ def get_task(db: Session, task_id: int):
 def get_tasks(db: Session, cat_id: Optional[int] = None, active_only: bool = False, skip: int = 0, limit: int = 100):
     query = db.query(models.Task)
     if cat_id is not None:
-        query = query.filter(models.Task.cat_id == cat_id)
+        query = query.filter(or_(
+            models.Task.cat_id == cat_id,
+            models.Task.cats.any(models.Cat.id == cat_id),
+            and_(models.Task.cat_id.is_(None), ~models.Task.cats.any()),
+        ))
     if active_only:
         query = query.filter(models.Task.is_active == True)
     return query.order_by(models.Task.next_due_date).offset(skip).limit(limit).all()
@@ -223,9 +227,14 @@ def get_due_tasks(db: Session, minutes: int = 30):
 
 
 def create_task(db: Session, task: schemas.TaskCreate):
-    task_data = task.model_dump()
+    task_data = task.model_dump(exclude={"cat_ids"})
     task_data["next_due_date"] = to_utc_naive(task.next_due_date)
+    cat_ids = _validate_cat_ids(db, task.cat_ids)
+    if cat_ids:
+        task_data["cat_id"] = None
     db_task = models.Task(**task_data)
+    if cat_ids:
+        db_task.cats = _get_cats_by_ids(db, cat_ids)
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
@@ -236,7 +245,11 @@ def update_task(db: Session, task_id: int, task: schemas.TaskUpdate):
     db_task = get_task(db, task_id)
     if not db_task:
         return None
-    update_data = task.model_dump(exclude_unset=True)
+    update_data = task.model_dump(exclude_unset=True, exclude={"cat_ids"})
+    if "cat_ids" in task.model_fields_set:
+        cat_ids = _validate_cat_ids(db, task.cat_ids or [])
+        db_task.cats = _get_cats_by_ids(db, cat_ids)
+        update_data["cat_id"] = None
     if "next_due_date" in update_data and task.next_due_date is not None:
         update_data["next_due_date"] = to_utc_naive(task.next_due_date)
     for key, value in update_data.items():
@@ -246,6 +259,29 @@ def update_task(db: Session, task_id: int, task: schemas.TaskUpdate):
     return db_task
 
 
+def _get_cats_by_ids(db: Session, cat_ids: List[int]):
+    cats = db.query(models.Cat).filter(models.Cat.id.in_(cat_ids)).all() if cat_ids else []
+    by_id = {cat.id: cat for cat in cats}
+    return [by_id[cat_id] for cat_id in cat_ids]
+
+
+def _validate_cat_ids(db: Session, cat_ids: List[int]):
+    unique_ids = list(dict.fromkeys(cat_ids))
+    if len(unique_ids) != len(cat_ids):
+        raise ValueError("任务对象中包含重复的猫咪")
+    if unique_ids and db.query(models.Cat.id).filter(models.Cat.id.in_(unique_ids)).count() != len(unique_ids):
+        raise ValueError("任务对象中包含不存在的猫咪")
+    return unique_ids
+
+
+def get_task_target_cat_ids(db: Session, task: models.Task):
+    if task.cats:
+        return [cat.id for cat in task.cats]
+    if task.cat_id is not None:
+        return [task.cat_id]
+    return [cat.id for cat in db.query(models.Cat.id).order_by(models.Cat.id).all()]
+
+
 def complete_task(db: Session, task_id: int, completion: Optional[schemas.TaskCompleteRequest] = None):
     """完成任务并更新下次到期时间"""
     db_task = get_task(db, task_id)
@@ -253,6 +289,28 @@ def complete_task(db: Session, task_id: int, completion: Optional[schemas.TaskCo
         return None
 
     completed_at = to_utc_naive(completion.completed_at) if completion and completion.completed_at else utc_now_naive()
+    target_cat_ids = get_task_target_cat_ids(db, db_task)
+    cycle_due_date = db_task.next_due_date
+    requested_cat_id = completion.cat_id if completion else None
+    if requested_cat_id is not None and requested_cat_id not in target_cat_ids:
+        raise ValueError("该猫咪不是此任务的对象")
+    cats_to_complete = [requested_cat_id] if requested_cat_id is not None else target_cat_ids
+    for cat_id in cats_to_complete:
+        if not db.query(models.TaskCatCompletion.id).filter(
+            models.TaskCatCompletion.task_id == task_id,
+            models.TaskCatCompletion.cat_id == cat_id,
+            models.TaskCatCompletion.cycle_due_date == cycle_due_date,
+        ).first():
+            db.add(models.TaskCatCompletion(task_id=task_id, cat_id=cat_id, cycle_due_date=cycle_due_date, completed_at=completed_at))
+    db.flush()
+    completed_cat_ids = {entry.cat_id for entry in db.query(models.TaskCatCompletion).filter(
+        models.TaskCatCompletion.task_id == task_id,
+        models.TaskCatCompletion.cycle_due_date == cycle_due_date,
+    ).all()}
+    if target_cat_ids and not set(target_cat_ids).issubset(completed_cat_ids):
+        db.commit()
+        db.refresh(db_task)
+        return db_task
     deducted_quantity = db_task.linked_item_quantity or Decimal("0")
 
     if db_task.linked_item_id and deducted_quantity > 0:

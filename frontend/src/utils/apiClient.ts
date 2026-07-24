@@ -176,6 +176,8 @@ export const apiClient = {
     return backendTasks.map((t: any) => ({
       id: String(t.id),
       catId: t.cat_id ? String(t.cat_id) : 'all',
+      catIds: (t.cat_ids || []).map((id: number) => String(id)),
+      completedCatIds: (t.completed_cat_ids || []).map((id: number) => String(id)),
       title: t.title,
       intervalDays: t.frequency_days,
       scheduleType: t.schedule_type || (t.frequency_days > 0 ? 'interval' : 'temporary'),
@@ -204,7 +206,7 @@ export const apiClient = {
       linked_item_id: task.linkedItemId ? Number(task.linkedItemId) : null,
       linked_item_quantity: task.linkedItemQuantity || 0,
       bark_enabled: true,
-      cat_id: task.catId === 'all' ? null : Number(task.catId)
+      cat_ids: (task.catIds || (task.catId === 'all' ? [] : [task.catId])).map(Number)
     };
     const response = await apiFetch('/tasks/', {
       method: 'POST',
@@ -225,7 +227,7 @@ export const apiClient = {
       completion_target: task.completionTarget || 0,
       linked_item_id: task.linkedItemId ? Number(task.linkedItemId) : null,
       linked_item_quantity: task.linkedItemQuantity || 0,
-      cat_id: task.catId === 'all' ? null : Number(task.catId)
+      cat_ids: (task.catIds || (task.catId === 'all' ? [] : [task.catId])).map(Number)
     };
     await apiFetch(`/tasks/${id}`, {
       method: 'PUT',
@@ -233,11 +235,12 @@ export const apiClient = {
     });
   },
 
-  async completeTask(id: string, notes = '', severity: 'normal' | 'warning' | 'abnormal' = 'normal'): Promise<any> {
+  async completeTask(id: string, catId: string | undefined, notes = '', severity: 'normal' | 'warning' | 'abnormal' = 'normal'): Promise<any> {
     const response = await apiFetch(`/tasks/${id}/complete`, {
       method: 'POST',
       body: JSON.stringify({
         completed_at: new Date().toISOString(),
+        cat_id: catId ? Number(catId) : null,
         notes,
         severity
       })

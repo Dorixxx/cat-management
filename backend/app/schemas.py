@@ -79,6 +79,7 @@ class TaskBase(BaseModel):
 
 
 class TaskCreate(TaskBase):
+    cat_ids: List[int] = Field(default_factory=list)
     cat_id: Optional[int] = None
 
 
@@ -98,12 +99,16 @@ class TaskUpdate(BaseModel):
     reminder_cycle_key: Optional[str] = None
     is_active: Optional[bool] = None
     bark_enabled: Optional[bool] = None
+    cat_ids: Optional[List[int]] = None
     cat_id: Optional[int] = None
 
 
 class TaskResponse(TaskBase):
     id: int
     cat_id: Optional[int]
+    cat_ids: List[int]
+    is_all_cats: bool
+    completed_cat_ids: List[int]
     completed_count: int
     is_active: bool
     created_at: datetime
@@ -114,6 +119,7 @@ class TaskResponse(TaskBase):
 
 
 class TaskCompleteRequest(BaseModel):
+    cat_id: Optional[int] = None
     completed_at: Optional[datetime] = None
     notes: Optional[str] = None
     severity: Optional[str] = Field(default="normal", pattern="^(normal|warning|abnormal)$")

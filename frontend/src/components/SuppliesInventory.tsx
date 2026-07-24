@@ -319,7 +319,7 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
                 <div>
                   <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">当前库存 *</label>
-                  <input type="number" step="0.01" min="0" value={stockAmount} required onChange={(e) => setStockAmount(Math.max(0, Number(e.target.value)))} className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" placeholder="在库量" />
+                  <input type="number" step="0.01" min="0" value={stockAmount || ''} required onChange={(e) => setStockAmount(Math.max(0, Number(e.target.value)))} className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" placeholder="在库量" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">存储单位 *</label>
@@ -330,11 +330,11 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">库存警戒线 *</label>
-                  <input type="number" step="0.01" min="0" value={minThreshold} required onChange={(e) => setMinThreshold(Math.max(0, Number(e.target.value)))} className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" placeholder="低于此值提醒" />
+                  <input type="number" step="0.01" min="0" value={minThreshold || ''} required onChange={(e) => setMinThreshold(Math.max(0, Number(e.target.value)))} className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" placeholder="低于此值提醒" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">每日消耗量</label>
-                  <input type="number" step="0.01" min="0" value={dailyConsumption} onChange={(e) => setDailyConsumption(Math.max(0, Number(e.target.value)))} className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" placeholder="用于估算剩余天数" />
+                  <input type="number" step="0.01" min="0" value={dailyConsumption || ''} onChange={(e) => setDailyConsumption(Math.max(0, Number(e.target.value)))} className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" placeholder="用于估算剩余天数" />
                 </div>
               </div>
 
@@ -346,7 +346,7 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">保质期天数</label>
-                  <input type="number" min="0" value={shelfLifeDays} onChange={(e) => setShelfLifeDays(Math.max(0, Number(e.target.value)))} className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" placeholder="例如：540" />
+                  <input type="number" min="0" value={shelfLifeDays || ''} onChange={(e) => setShelfLifeDays(Math.max(0, Number(e.target.value)))} className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" placeholder="例如：540" />
                   <p className="mt-1 text-[10px] text-stone-400">系统会结合设置页的临期提前天数提醒。</p>
                 </div>
               </div>
