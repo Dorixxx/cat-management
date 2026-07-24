@@ -240,28 +240,28 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
             return (
               <div
                 key={item.id}
-                className={`h-[300px] rounded-xl border p-4 bg-white shadow-[0_1px_2.5px_rgba(0,0,0,0.01)] transition-all flex flex-col ${isLowStock || isExpiring ? 'border-amber-300 ring-1 ring-amber-100/50' : 'border-stone-100 hover:border-amber-100'}`}
+                className={`rounded-xl border p-4 bg-white shadow-[0_1px_2.5px_rgba(0,0,0,0.01)] transition-all flex flex-col ${isLowStock || isExpiring ? 'border-amber-300 ring-1 ring-amber-100/50' : 'border-stone-100 hover:border-amber-100'}`}
               >
-                <div className="flex items-start justify-between gap-3 mb-2">
+                <div className="h-5 flex items-start justify-between gap-3 mb-2">
                   <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border bg-stone-50 text-stone-700 border-stone-100">
                     {item.categoryName}
                   </span>
                   {(isLowStock || isExpiring) && <AlertTriangle size={14} className="text-amber-500" />}
                 </div>
 
-                <h4 className="font-bold text-xs text-stone-850 tracking-tight leading-snug line-clamp-1">
+                <h4 className="h-5 font-bold text-xs text-stone-850 tracking-tight leading-snug truncate">
                   {item.name}
                 </h4>
-                {(item.brand || item.isFood || item.purchaseUrl) && (
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                <div className="h-6 mt-1.5 flex items-start gap-1.5 overflow-hidden">
+                  {(item.brand || item.isFood || item.purchaseUrl) && <>
                     {item.brand && <span className="rounded-md bg-violet-50 border border-violet-100 px-1.5 py-0.5 text-[9px] font-bold text-violet-700">{item.brand}</span>}
                     {item.isFood && <span className="rounded-md bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">食品</span>}
                     {item.purchaseUrl && <a href={item.purchaseUrl} target="_blank" rel="noreferrer" className="rounded-md bg-sky-50 border border-sky-100 px-1.5 py-0.5 text-[9px] font-bold text-sky-700 hover:bg-sky-100">购买链接</a>}
-                  </div>
-                )}
-                {item.note && <p className="mt-2 text-[10px] text-stone-400 truncate">{item.note}</p>}
+                  </>}
+                </div>
+                <p className="h-5 mt-1 text-[10px] text-stone-400 truncate">{item.note || ''}</p>
 
-                <div className="border-t border-stone-50 pt-3 mt-3">
+                <div className="h-[92px] border-t border-stone-50 pt-3 mt-2">
                   <span className="text-[9px] text-stone-400 font-mono">
                     当前库存 / 警戒线
                   </span>
@@ -272,17 +272,11 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
                     <span className="text-xs font-semibold text-stone-500">{item.unit}</span>
                     <span className="text-[10px] text-stone-400 ml-1">/ {item.minThreshold}{item.warningUnit || item.unit}</span>
                   </div>
-                  {daysRemaining !== null && (
-                    <p className="text-[10px] text-stone-500 mt-1">按每日 {item.dailyConsumption}{item.consumptionUnit || item.unit} 估算，还可使用 {Math.max(0, daysRemaining).toFixed(1)} 天</p>
-                  )}
-                  {expiry && (
-                    <p className={`text-[10px] mt-1 ${isExpiring ? 'text-amber-700 font-semibold' : 'text-stone-500'}`}>
-                      到期日 {expiry.expiryDate}，剩余 {expiry.days} 天
-                    </p>
-                  )}
+                  <p className="h-4 text-[10px] text-stone-500 mt-1 truncate">{daysRemaining !== null ? `按每日 ${item.dailyConsumption}${item.consumptionUnit || item.unit} 估算，还可使用 ${Math.max(0, daysRemaining).toFixed(1)} 天` : ''}</p>
+                  <p className={`h-4 text-[10px] mt-1 truncate ${isExpiring ? 'text-amber-700 font-semibold' : 'text-stone-500'}`}>{expiry ? `到期日 ${expiry.expiryDate}，剩余 ${expiry.days} 天` : ''}</p>
                 </div>
 
-                <div className="flex items-center justify-between mt-auto pt-2.5 border-t border-stone-50">
+                <div className="flex items-center justify-between pt-2.5 border-t border-stone-50">
                   <div className="flex items-center gap-1.5">
                     <button onClick={() => adjustStock(item, -1)} className="w-7 h-7 rounded-lg border border-stone-200 hover:border-amber-400 text-stone-500 bg-white hover:bg-amber-50 cursor-pointer text-xs font-bold">-</button>
                     <button onClick={() => adjustStock(item, 1)} className="w-7 h-7 rounded-lg border border-stone-200 hover:border-amber-400 text-stone-500 bg-white hover:bg-amber-50 cursor-pointer text-xs font-bold">+</button>
