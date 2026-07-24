@@ -31,7 +31,9 @@ export interface SupplyItem {
   stockAmount: number;
   unit: string; // e.g. "袋", "罐", "kg", "盒"
   minThreshold: number; // Low stock warning below this
+  warningUnit?: string;
   dailyConsumption: number;
+  consumptionUnit?: string;
   productionDate: string;
   shelfLifeDays: number;
   expiryWarningDays: number;

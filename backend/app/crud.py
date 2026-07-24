@@ -487,9 +487,22 @@ def get_inventory_warnings(db: Session):
     today = date.today()
     config = get_bark_config(db)
     default_expiry_warning_days = config.expiry_warning_days if config else 7
+
+    def convert_quantity(value, source_unit, target_unit):
+        if source_unit == target_unit or not source_unit or not target_unit:
+            return value
+        factors = {"kg": Decimal("1000"), "g": Decimal("1"), "L": Decimal("1000"), "ml": Decimal("1")}
+        if source_unit not in factors or target_unit not in factors:
+            return value
+        is_weight = source_unit in {"kg", "g"}
+        if is_weight != (target_unit in {"kg", "g"}):
+            return value
+        return value * factors[source_unit] / factors[target_unit]
+
     for item in items:
-        daily_consumption = item.daily_consumption or Decimal("0")
+        daily_consumption = convert_quantity(item.daily_consumption or Decimal("0"), item.consumption_unit, item.unit)
         weekly_consumption = item.weekly_consumption or Decimal("0")
+        warning_threshold = convert_quantity(item.warning_threshold or Decimal("0"), item.warning_unit, item.unit)
 
         if daily_consumption > 0:
             days_remaining = item.current_quantity / daily_consumption
@@ -502,7 +515,7 @@ def get_inventory_warnings(db: Session):
         else:
             days_remaining = None
             weeks_remaining = None
-            needs_purchase = item.current_quantity <= item.warning_threshold
+            needs_purchase = item.current_quantity <= warning_threshold
         
         if needs_purchase:
             warnings.append({

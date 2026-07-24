@@ -44,6 +44,8 @@ def ensure_schema_updates():
         "brand": "VARCHAR(100)",
         "is_food": "BOOLEAN DEFAULT FALSE",
         "daily_consumption": "NUMERIC(10, 2) DEFAULT 0",
+        "consumption_unit": "VARCHAR(20)",
+        "warning_unit": "VARCHAR(20)",
         "expiry_warning_days": "INTEGER DEFAULT 7",
         "production_date": "DATE",
         "shelf_life_days": "INTEGER",

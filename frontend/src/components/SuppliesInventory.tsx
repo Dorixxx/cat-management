@@ -12,13 +12,8 @@ interface SuppliesInventoryProps {
   onDeleteSupply: (id: string) => void;
 }
 
-const UNIT_GROUPS = {
-  weight: ['kg', 'g'],
-  liquid: ['L', 'ml'],
-  count: ['份'],
-} as const;
-type UnitGroup = keyof typeof UNIT_GROUPS;
-const getUnitGroup = (unit: string): UnitGroup => unit === 'kg' || unit === 'g' ? 'weight' : unit === 'L' || unit === 'ml' ? 'liquid' : 'count';
+const UNIT_OPTIONS = ['kg', 'g', 'L', 'ml', '份'];
+const compatibleUnits = (unit: string) => unit === 'kg' || unit === 'g' ? ['kg', 'g'] : unit === 'L' || unit === 'ml' ? ['L', 'ml'] : ['份'];
 
 export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
   supplies,
@@ -42,7 +37,8 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
   const [categoryId, setCategoryId] = useState('');
   const [stockAmount, setStockAmount] = useState<number>(1);
   const [unit, setUnit] = useState('份');
-  const [unitGroup, setUnitGroup] = useState<UnitGroup>('count');
+  const [warningUnit, setWarningUnit] = useState('份');
+  const [consumptionUnit, setConsumptionUnit] = useState('份');
   const [minThreshold, setMinThreshold] = useState<number>(0.5);
   const [dailyConsumption, setDailyConsumption] = useState<number>(0);
   const [productionDate, setProductionDate] = useState('');
@@ -73,7 +69,13 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
 
   const getDaysRemaining = (item: SupplyItem) => {
     if (!item.dailyConsumption || item.dailyConsumption <= 0) return null;
-    return item.stockAmount / item.dailyConsumption;
+    const from = item.consumptionUnit || item.unit;
+    const factors: Record<string, number> = { kg: 1000, g: 1, L: 1000, ml: 1 };
+    const sameGroup = (from === 'kg' || from === 'g') === (item.unit === 'kg' || item.unit === 'g');
+    const consumptionInStockUnit = factors[from] && factors[item.unit] && sameGroup
+      ? item.dailyConsumption * factors[from] / factors[item.unit]
+      : item.dailyConsumption;
+    return item.stockAmount / consumptionInStockUnit;
   };
 
   const handleCreateCategory = async (e: React.FormEvent) => {
@@ -104,9 +106,11 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
       categoryName: selected?.name || '未分类',
       categoryIcon: selected?.icon || '📦',
       stockAmount: Number(stockAmount),
-      unit: unit || '件',
+      unit: unit || '份',
       minThreshold: Number(minThreshold),
+      warningUnit,
       dailyConsumption: Number(dailyConsumption),
+      consumptionUnit,
       productionDate: isFood ? productionDate : '',
       shelfLifeDays: isFood ? Number(shelfLifeDays) : 0,
       expiryWarningDays: isFood ? Number(expiryWarningDays) : 7,
@@ -134,7 +138,8 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
     setCategoryId(item.categoryId || '');
     setStockAmount(item.stockAmount);
     setUnit(item.unit);
-    setUnitGroup(getUnitGroup(item.unit));
+    setWarningUnit(item.warningUnit || item.unit);
+    setConsumptionUnit(item.consumptionUnit || item.unit);
     setMinThreshold(item.minThreshold);
     setDailyConsumption(item.dailyConsumption);
     setProductionDate(item.productionDate);
@@ -153,7 +158,8 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
     setCategoryId('');
     setStockAmount(1);
     setUnit('份');
-    setUnitGroup('count');
+    setWarningUnit('份');
+    setConsumptionUnit('份');
     setMinThreshold(0.5);
     setDailyConsumption(0);
     setProductionDate('');
@@ -234,7 +240,7 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
             return (
               <div
                 key={item.id}
-                className={`h-[355px] rounded-xl border p-4 bg-white shadow-[0_1px_2.5px_rgba(0,0,0,0.01)] transition-all flex flex-col ${isLowStock || isExpiring ? 'border-amber-300 ring-1 ring-amber-100/50' : 'border-stone-100 hover:border-amber-100'}`}
+                className={`h-[300px] rounded-xl border p-4 bg-white shadow-[0_1px_2.5px_rgba(0,0,0,0.01)] transition-all flex flex-col ${isLowStock || isExpiring ? 'border-amber-300 ring-1 ring-amber-100/50' : 'border-stone-100 hover:border-amber-100'}`}
               >
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border bg-stone-50 text-stone-700 border-stone-100">
@@ -264,10 +270,10 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
                       {item.stockAmount}
                     </span>
                     <span className="text-xs font-semibold text-stone-500">{item.unit}</span>
-                    <span className="text-[10px] text-stone-400 ml-1">/ {item.minThreshold}{item.unit}</span>
+                    <span className="text-[10px] text-stone-400 ml-1">/ {item.minThreshold}{item.warningUnit || item.unit}</span>
                   </div>
                   {daysRemaining !== null && (
-                    <p className="text-[10px] text-stone-500 mt-1">按每日 {item.dailyConsumption}{item.unit} 估算，还可使用 {Math.max(0, daysRemaining).toFixed(1)} 天</p>
+                    <p className="text-[10px] text-stone-500 mt-1">按每日 {item.dailyConsumption}{item.consumptionUnit || item.unit} 估算，还可使用 {Math.max(0, daysRemaining).toFixed(1)} 天</p>
                   )}
                   {expiry && (
                     <p className={`text-[10px] mt-1 ${isExpiring ? 'text-amber-700 font-semibold' : 'text-stone-500'}`}>
@@ -355,19 +361,18 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
                   <input type="number" step="0.01" min="0" value={stockAmount || ''} required onChange={(e) => setStockAmount(Math.max(0, Number(e.target.value)))} className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" placeholder="在库量" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">计量类别与单位 *</label>
-                  <div className="flex gap-1 mb-2">
-                    {([{ key: 'weight', label: '称重' }, { key: 'liquid', label: '液体' }, { key: 'count', label: '按份' }] as const).map(option => <button key={option.key} type="button" onClick={() => { setUnitGroup(option.key); setUnit(UNIT_GROUPS[option.key][0]); }} className={`flex-1 rounded-md border py-1.5 text-[10px] font-bold ${unitGroup === option.key ? 'bg-stone-900 text-white border-stone-900' : 'bg-white border-stone-200 text-stone-500'}`}>{option.label}</button>)}
-                  </div>
-                  <CustomSelect value={unit} onChange={setUnit} options={UNIT_GROUPS[unitGroup].map(option => ({ value: option, label: option }))} />
+                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">存储单位 *</label>
+                  <CustomSelect value={unit} onChange={(value) => { setUnit(value); const options = compatibleUnits(value); setWarningUnit(options[0]); setConsumptionUnit(options[0]); }} options={UNIT_OPTIONS.map(option => ({ value: option, label: option }))} />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">库存警戒线（{unit}）*</label>
+                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">库存警戒线 *</label>
                   <input type="number" step="0.01" min="0" value={minThreshold || ''} required onChange={(e) => setMinThreshold(Math.max(0, Number(e.target.value)))} className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" placeholder="低于此值提醒" />
+                  {unit !== '份' && <div className="mt-2"><CustomSelect value={warningUnit} onChange={setWarningUnit} options={compatibleUnits(unit).map(option => ({ value: option, label: option }))} /></div>}
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">每日消耗量（{unit}）</label>
+                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">每日消耗量</label>
                   <input type="number" step="0.01" min="0" value={dailyConsumption || ''} onChange={(e) => setDailyConsumption(Math.max(0, Number(e.target.value)))} className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" placeholder="用于估算剩余天数" />
+                  {unit !== '份' && <div className="mt-2"><CustomSelect value={consumptionUnit} onChange={setConsumptionUnit} options={compatibleUnits(unit).map(option => ({ value: option, label: option }))} /></div>}
                 </div>
               </div>
 

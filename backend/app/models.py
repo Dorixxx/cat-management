@@ -142,7 +142,9 @@ class Inventory(Base):
     current_quantity = Column(Numeric(10, 2), default=0)
     weekly_consumption = Column(Numeric(10, 2), default=0)  # 每周消耗量
     daily_consumption = Column(Numeric(10, 2), default=0)  # 每日消耗量
+    consumption_unit = Column(String(20))
     warning_threshold = Column(Numeric(10, 2), default=0)  # 预警阈值
+    warning_unit = Column(String(20))
     warning_weeks = Column(Numeric(3, 1), default=1.0)  # 提前预警周数
     expiry_warning_days = Column(Integer, default=7)
     production_date = Column(Date)

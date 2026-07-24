@@ -174,7 +174,9 @@ class InventoryBase(BaseModel):
     current_quantity: Optional[Decimal] = Decimal("0")
     weekly_consumption: Optional[Decimal] = Decimal("0")
     daily_consumption: Optional[Decimal] = Decimal("0")
+    consumption_unit: Optional[str] = None
     warning_threshold: Optional[Decimal] = Decimal("0")
+    warning_unit: Optional[str] = None
     warning_weeks: Optional[Decimal] = Decimal("1.0")
     expiry_warning_days: Optional[int] = Field(default=7, ge=0)
     production_date: Optional[date] = None
@@ -196,7 +198,9 @@ class InventoryUpdate(BaseModel):
     current_quantity: Optional[Decimal] = None
     weekly_consumption: Optional[Decimal] = None
     daily_consumption: Optional[Decimal] = None
+    consumption_unit: Optional[str] = None
     warning_threshold: Optional[Decimal] = None
+    warning_unit: Optional[str] = None
     warning_weeks: Optional[Decimal] = None
     expiry_warning_days: Optional[int] = Field(None, ge=0)
     production_date: Optional[date] = None
