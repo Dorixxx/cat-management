@@ -292,6 +292,10 @@ def complete_task(db: Session, task_id: int, completion: Optional[schemas.TaskCo
     target_cat_ids = get_task_target_cat_ids(db, db_task)
     cycle_due_date = db_task.next_due_date
     requested_cat_id = completion.cat_id if completion else None
+    # Older clients do not send cat_id.  A one-cat task still has an
+    # unambiguous completion object and must be recorded as that cat.
+    if requested_cat_id is None and len(target_cat_ids) == 1:
+        requested_cat_id = target_cat_ids[0]
     if requested_cat_id is not None and requested_cat_id not in target_cat_ids:
         raise ValueError("该猫咪不是此任务的对象")
     cats_to_complete = [requested_cat_id] if requested_cat_id is not None else target_cat_ids
