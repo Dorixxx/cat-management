@@ -312,12 +312,12 @@ export default function App() {
   };
 
   // Automated Routine Completion Engine
-  const handleCompleteTaskCycle = async (task: RoutineTask, catId?: string, notes = '', severity: 'normal' | 'warning' | 'abnormal' = 'normal') => {
+  const handleCompleteTaskCycle = async (task: RoutineTask, catIds: string[] = [], notes = '', severity: 'normal' | 'warning' | 'abnormal' = 'normal') => {
     const today = formatLocalDate();
     const calculatedNext = addDaysStr(today, task.intervalDays);
 
     try {
-      await apiClient.completeTask(task.id, catId, notes, severity);
+      await apiClient.completeTask(task.id, catIds, notes, severity);
       await syncAllFromBackend();
       return;
     } catch (e) {
@@ -326,7 +326,7 @@ export default function App() {
 
     const updated: RoutineTask = {
       ...task,
-      completedCatIds: catId ? [...new Set([...(task.completedCatIds || []), catId])] : task.catIds,
+      completedCatIds: [...new Set([...(task.completedCatIds || []), ...catIds])],
       lastCompletedDate: today,
       nextDueDate: task.intervalDays > 0 ? `${calculatedNext}T09:00` : task.nextDueDate,
       completedCount: (task.completedCount || 0) + 1,

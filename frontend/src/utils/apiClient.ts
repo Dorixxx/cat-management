@@ -186,6 +186,7 @@ export const apiClient = {
       nextDueDate: t.next_due_date ? toLocalDateTimeInput(t.next_due_date) : toLocalDateTimeInput(new Date().toISOString()),
       completionTarget: Number(t.completion_target || 0),
       completedCount: Number(t.completed_count || 0),
+      isActive: t.is_active !== false,
       linkedItemId: t.linked_item_id ? String(t.linked_item_id) : '',
       linkedItemQuantity: Number(t.linked_item_quantity || 0),
       note: t.description || ''
@@ -235,12 +236,12 @@ export const apiClient = {
     });
   },
 
-  async completeTask(id: string, catId: string | undefined, notes = '', severity: 'normal' | 'warning' | 'abnormal' = 'normal'): Promise<any> {
+  async completeTask(id: string, catIds: string[], notes = '', severity: 'normal' | 'warning' | 'abnormal' = 'normal'): Promise<any> {
     const response = await apiFetch(`/tasks/${id}/complete`, {
       method: 'POST',
       body: JSON.stringify({
         completed_at: new Date().toISOString(),
-        cat_id: catId ? Number(catId) : null,
+        cat_ids: catIds.map(Number),
         notes,
         severity
       })
@@ -260,6 +261,14 @@ export const apiClient = {
       linkedItemId: row.linked_item_id ? String(row.linked_item_id) : '',
       deductedQuantity: Number(row.deducted_quantity || 0)
     }));
+  },
+
+  async updateTaskCompletion(id: string, notes: string): Promise<void> {
+    await apiFetch(`/tasks/completions/${id}`, { method: 'PUT', body: JSON.stringify({ notes }) });
+  },
+
+  async deleteTaskCompletion(id: string): Promise<void> {
+    await apiFetch(`/tasks/completions/${id}`, { method: 'DELETE' });
   },
 
   async listAllTaskCompletions(filters: TaskCompletionFilters = {}): Promise<any[]> {

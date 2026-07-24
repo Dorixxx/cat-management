@@ -198,6 +198,7 @@ export const TaskHistory: React.FC<TaskHistoryProps> = ({ tasks, cats, supplies 
                     <th className="py-3 pr-4 font-bold">记录级别</th>
                     <th className="py-3 pr-4 font-bold">完成备注</th>
                     <th className="py-3 pr-4 font-bold">库存联动</th>
+                    <th className="py-3 font-bold">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100 text-[12px] text-stone-700">
@@ -213,6 +214,10 @@ export const TaskHistory: React.FC<TaskHistoryProps> = ({ tasks, cats, supplies 
                         <td className="py-3 pr-4">
                           <div className="font-bold text-stone-900">{task?.title || '已删除任务'}</div>
                           {task?.note && <div className="mt-1 text-[11px] text-stone-400 line-clamp-2">{task.note}</div>}
+                        </td>
+                        <td className="py-3 whitespace-nowrap">
+                          <button onClick={async () => { const notes = window.prompt('编辑完成备注', record.notes || ''); if (notes !== null) { await apiClient.updateTaskCompletion(record.id, notes); loadHistory(); } }} className="mr-3 text-[10px] font-bold text-stone-600 hover:text-stone-900">编辑备注</button>
+                          <button onClick={async () => { if (window.confirm('删除后无法恢复该完成记录及其备注，确认继续吗？')) { await apiClient.deleteTaskCompletion(record.id); loadHistory(); } }} className="text-[10px] font-bold text-rose-600 hover:text-rose-800">删除</button>
                         </td>
                         <td className="py-3 pr-4">
                           <span className="inline-flex rounded-md bg-amber-50 border border-amber-100 px-2 py-1 text-[10px] font-semibold text-amber-800">{cat?.name || '全部对象'}</span>

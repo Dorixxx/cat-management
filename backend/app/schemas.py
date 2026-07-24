@@ -120,6 +120,7 @@ class TaskResponse(TaskBase):
 
 class TaskCompleteRequest(BaseModel):
     cat_id: Optional[int] = None
+    cat_ids: List[int] = Field(default_factory=list)
     completed_at: Optional[datetime] = None
     notes: Optional[str] = None
     severity: Optional[str] = Field(default="normal", pattern="^(normal|warning|abnormal)$")
@@ -138,6 +139,10 @@ class TaskCompletionResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class TaskCompletionUpdate(BaseModel):
+    notes: Optional[str] = None
 
 
 # ============== Inventory Category Schemas ==============

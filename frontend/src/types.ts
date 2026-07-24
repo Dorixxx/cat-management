@@ -54,6 +54,7 @@ export interface RoutineTask {
   nextDueDate: string; // YYYY-MM-DDTHH:mm
   completionTarget: number;
   completedCount: number;
+  isActive: boolean;
   linkedItemId: string;
   linkedItemQuantity: number;
   note: string;

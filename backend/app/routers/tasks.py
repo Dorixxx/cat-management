@@ -88,6 +88,22 @@ def list_task_completions(task_id: int, db: Session = Depends(get_db)):
     return crud.get_task_completions(db, task_id)
 
 
+@router.put("/completions/{completion_id}", response_model=schemas.TaskCompletionResponse)
+def update_task_completion(completion_id: int, update: schemas.TaskCompletionUpdate, db: Session = Depends(get_db)):
+    record = crud.update_task_completion(db, completion_id, update)
+    if not record:
+        raise HTTPException(status_code=404, detail="完成记录不存在")
+    return record
+
+
+@router.delete("/completions/{completion_id}")
+def delete_task_completion(completion_id: int, db: Session = Depends(get_db)):
+    record = crud.delete_task_completion(db, completion_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="完成记录不存在")
+    return {"message": "完成记录已删除"}
+
+
 @router.delete("/{task_id}")
 def delete_task(task_id: int, db: Session = Depends(get_db)):
     db_task = crud.delete_task(db, task_id)

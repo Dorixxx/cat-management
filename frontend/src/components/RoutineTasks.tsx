@@ -10,7 +10,7 @@ interface RoutineTasksProps {
   onAddTask: (task: Omit<RoutineTask, 'id' | 'lastCompletedDate'>) => void;
   onUpdateTask: (task: RoutineTask) => void;
   onDeleteTask: (id: string) => void;
-  onCompleteTask: (task: RoutineTask, catId?: string, notes?: string, severity?: TaskCompletionSeverity) => void;
+  onCompleteTask: (task: RoutineTask, catIds: string[], notes?: string, severity?: TaskCompletionSeverity) => void;
 }
 
 type ScheduleKind = 'cron' | 'temporary';
@@ -268,7 +268,7 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
   const [completionTask, setCompletionTask] = useState<RoutineTask | null>(null);
   const [completionNotes, setCompletionNotes] = useState('');
   const [completionSeverity, setCompletionSeverity] = useState<TaskCompletionSeverity>('normal');
-  const [completionCatId, setCompletionCatId] = useState<string>('');
+  const [completionCatIds, setCompletionCatIds] = useState<string[]>([]);
 
   const todayStr = formatLocalDate();
   const activeCronExpression = buildCronExpression(cronMode, cronHour, cronMinute, weeklyDays, monthlyDay, cronExpression);
@@ -304,6 +304,7 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
       catId: catIds.length === 1 ? catIds[0] : 'all',
       catIds,
       completedCatIds: [],
+      isActive: true,
       intervalDays: scheduleKind === 'cron' ? getCronIntervalDays() : 0,
       scheduleType: scheduleKind === 'cron' ? 'cron' as const : 'temporary' as const,
       cronExpression: finalCronExpression,
@@ -513,6 +514,9 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
                         <span className="text-[9px] font-semibold text-stone-500 border border-stone-200/60 px-1.5 py-0.5 rounded bg-stone-50 max-w-full truncate">
                           {formatSchedule(task)}
                         </span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${!task.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : task.completedCatIds?.length ? 'bg-amber-50 text-amber-800 border-amber-100' : 'bg-sky-50 text-sky-700 border-sky-100'}`}>
+                          {!task.isActive ? '已完成' : task.completedCatIds?.length ? `部分完成 ${task.completedCatIds.length}/${task.catIds?.length || cats.length}` : '未完成'}
+                        </span>
                         {task.completionTarget > 0 && (
                           <span className="text-[9px] font-semibold text-stone-400 border border-stone-200/60 px-1.5 py-0.5 rounded bg-stone-50">
                             {task.completedCount}/{task.completionTarget} 次
@@ -554,19 +558,19 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2.5 self-end shrink-0 border-t border-stone-100 pt-3 w-full justify-end">
-                      <button
+                      {task.isActive && <button
                         onClick={() => {
                           setCompletionTask(task);
                           setCompletionNotes('');
                           setCompletionSeverity('normal');
-                          setCompletionCatId(task.catIds?.length === 1 ? task.catIds[0] : '');
+                          setCompletionCatIds(task.catIds?.length === 1 ? task.catIds.filter(id => !task.completedCatIds?.includes(id)) : []);
                         }}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition shadow-xs cursor-pointer select-none"
                         title="点击本期打卡"
                       >
                         <Check size={12} strokeWidth={3} />
                         完成一次
-                      </button>
+                      </button>}
 
                       <div className="flex items-center border-l border-stone-100 pl-2">
                         <button
@@ -881,13 +885,15 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
             </div>
 
             <div className="space-y-4">
-              {(completionTask.catIds?.length !== 1 || !completionTask.catIds?.length) && (
+              {(
                 <div>
                   <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">本次完成的猫咪</label>
+                  {(() => { const targets = completionTask.catIds?.length ? completionTask.catIds : cats.map(cat => cat.id); const pending = targets.filter(id => !completionTask.completedCatIds?.includes(id)); return <button type="button" onClick={() => setCompletionCatIds(pending)} className="mb-2 text-[10px] font-bold text-emerald-700">全选未完成对象</button>; })()}
                   <div className="flex flex-wrap gap-2">
-                    {(completionTask.catIds?.length ? completionTask.catIds : cats.map(cat => cat.id)).map(catId => (
-                      <button key={catId} type="button" onClick={() => setCompletionCatId(catId)} className={`rounded-lg border px-3 py-2 text-[11px] font-bold ${completionCatId === catId ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-stone-200 text-stone-600'}`}>{getCatName(catId)}</button>
-                    ))}
+                    {(completionTask.catIds?.length ? completionTask.catIds : cats.map(cat => cat.id)).map(catId => {
+                      const completed = completionTask.completedCatIds?.includes(catId);
+                      return <button key={catId} disabled={completed} type="button" onClick={() => setCompletionCatIds(ids => ids.includes(catId) ? ids.filter(id => id !== catId) : [...ids, catId])} className={`rounded-lg border px-3 py-2 text-[11px] font-bold ${completed ? 'bg-stone-100 border-stone-100 text-stone-400 line-through' : completionCatIds.includes(catId) ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-stone-200 text-stone-600'}`}>{getCatName(catId)}{completed ? '（已完成）' : ''}</button>;
+                    })}
                   </div>
                   <p className="mt-1 text-[10px] text-stone-400">逐只完成；全部目标完成后才会进入下一期。</p>
                 </div>
@@ -941,11 +947,12 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    onCompleteTask(completionTask, completionCatId || completionTask.catIds?.[0], completionNotes, completionSeverity);
+                    if (!completionCatIds.length) return;
+                    onCompleteTask(completionTask, completionCatIds, completionNotes, completionSeverity);
                     setCompletionTask(null);
                     setCompletionNotes('');
                     setCompletionSeverity('normal');
-                    setCompletionCatId('');
+                    setCompletionCatIds([]);
                   }}
                   className="flex-1 bg-stone-950 hover:bg-stone-800 text-white rounded-xl py-2.5 text-xs font-bold transition cursor-pointer"
                 >

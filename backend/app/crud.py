@@ -291,14 +291,21 @@ def complete_task(db: Session, task_id: int, completion: Optional[schemas.TaskCo
     completed_at = to_utc_naive(completion.completed_at) if completion and completion.completed_at else utc_now_naive()
     target_cat_ids = get_task_target_cat_ids(db, db_task)
     cycle_due_date = db_task.next_due_date
-    requested_cat_id = completion.cat_id if completion else None
+    requested_cat_ids = list(dict.fromkeys(completion.cat_ids)) if completion and completion.cat_ids else []
+    if completion and completion.cat_id is not None:
+        requested_cat_ids = list(dict.fromkeys([*requested_cat_ids, completion.cat_id]))
     # Older clients do not send cat_id.  A one-cat task still has an
     # unambiguous completion object and must be recorded as that cat.
-    if requested_cat_id is None and len(target_cat_ids) == 1:
-        requested_cat_id = target_cat_ids[0]
-    if requested_cat_id is not None and requested_cat_id not in target_cat_ids:
+    if not requested_cat_ids and len(target_cat_ids) == 1:
+        requested_cat_ids = [target_cat_ids[0]]
+    if any(cat_id not in target_cat_ids for cat_id in requested_cat_ids):
         raise ValueError("该猫咪不是此任务的对象")
-    cats_to_complete = [requested_cat_id] if requested_cat_id is not None else target_cat_ids
+    cats_to_complete = requested_cat_ids or target_cat_ids
+    already_completed_ids = {entry.cat_id for entry in db.query(models.TaskCatCompletion).filter(
+        models.TaskCatCompletion.task_id == task_id,
+        models.TaskCatCompletion.cycle_due_date == cycle_due_date,
+    ).all()}
+    cats_to_complete = [cat_id for cat_id in cats_to_complete if cat_id not in already_completed_ids]
     for cat_id in cats_to_complete:
         if not db.query(models.TaskCatCompletion.id).filter(
             models.TaskCatCompletion.task_id == task_id,
@@ -315,16 +322,17 @@ def complete_task(db: Session, task_id: int, completion: Optional[schemas.TaskCo
     if db_task.linked_item_id and deducted_quantity > 0:
         item = get_inventory_item(db, db_task.linked_item_id)
         if item:
-            item.current_quantity = max(Decimal("0"), item.current_quantity - deducted_quantity)
-    db.add(models.TaskCompletion(
-        task_id=task_id,
-        cat_id=requested_cat_id,
-        completed_at=completed_at,
-        notes=completion.notes if completion else None,
-        severity=(completion.severity if completion and completion.severity else "normal"),
-        linked_item_id=db_task.linked_item_id,
-        deducted_quantity=deducted_quantity,
-    ))
+            item.current_quantity = max(Decimal("0"), item.current_quantity - deducted_quantity * len(cats_to_complete))
+    for cat_id in cats_to_complete:
+        db.add(models.TaskCompletion(
+            task_id=task_id,
+            cat_id=cat_id,
+            completed_at=completed_at,
+            notes=completion.notes if completion else None,
+            severity=(completion.severity if completion and completion.severity else "normal"),
+            linked_item_id=db_task.linked_item_id,
+            deducted_quantity=deducted_quantity,
+        ))
     if target_cat_ids and not set(target_cat_ids).issubset(completed_cat_ids):
         db.commit()
         db.refresh(db_task)
@@ -360,6 +368,25 @@ def get_task_completions(db: Session, task_id: int, skip: int = 0, limit: int = 
     return db.query(models.TaskCompletion).filter(
         models.TaskCompletion.task_id == task_id
     ).order_by(models.TaskCompletion.completed_at.desc()).offset(skip).limit(limit).all()
+
+
+def update_task_completion(db: Session, completion_id: int, update: schemas.TaskCompletionUpdate):
+    record = db.query(models.TaskCompletion).filter(models.TaskCompletion.id == completion_id).first()
+    if not record:
+        return None
+    record.notes = update.notes
+    db.commit()
+    db.refresh(record)
+    return record
+
+
+def delete_task_completion(db: Session, completion_id: int):
+    record = db.query(models.TaskCompletion).filter(models.TaskCompletion.id == completion_id).first()
+    if not record:
+        return None
+    db.delete(record)
+    db.commit()
+    return record
 
 
 def get_all_task_completions(
