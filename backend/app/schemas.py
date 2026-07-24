@@ -72,8 +72,6 @@ class TaskBase(BaseModel):
 
 
 class TaskCreate(TaskBase):
-    # Empty list means every cat.  `cat_id` remains supported for old clients.
-    cat_ids: List[int] = Field(default_factory=list)
     cat_id: Optional[int] = None
 
 
@@ -86,28 +84,18 @@ class TaskUpdate(BaseModel):
     reminder_minutes: Optional[int] = Field(None, ge=0)
     is_active: Optional[bool] = None
     bark_enabled: Optional[bool] = None
-    # Omit to leave targets unchanged; [] changes the task to target all cats.
-    cat_ids: Optional[List[int]] = None
     cat_id: Optional[int] = None
 
 
 class TaskResponse(TaskBase):
     id: int
     cat_id: Optional[int]
-    cat_ids: List[int]
-    is_all_cats: bool
-    completed_cat_ids: List[int]
     is_active: bool
     created_at: datetime
     updated_at: datetime
 
     class Config:
         from_attributes = True
-
-
-class TaskComplete(BaseModel):
-    """Pass a cat ID to complete only that cat; omit it to complete all targets."""
-    cat_id: Optional[int] = None
 
 
 # ============== Inventory Category Schemas ==============
