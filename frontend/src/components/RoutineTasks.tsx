@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { RoutineTask, Cat, SupplyItem, TaskCompletionSeverity } from '../types';
 import { Check, CalendarDays, Plus, Trash2, Edit3, X, Clock3, Link2, Repeat2, ClipboardList } from 'lucide-react';
+import { CustomSelect } from './CustomSelect';
 
 interface RoutineTasksProps {
   tasks: RoutineTask[];
@@ -461,22 +462,7 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
           <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-end">
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] text-stone-400 shrink-0 font-sans">按猫咪筛选:</span>
-              <select
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === 'all') {
-                    setTargetFilter('All');
-                  } else {
-                    setTargetFilter({ catId: val });
-                  }
-                }}
-                className="rounded-lg border border-stone-200 py-1 px-2 text-[10px] bg-stone-50 text-stone-650 font-medium focus:bg-white outline-none animate-none"
-              >
-                <option value="all">所有管辖目标</option>
-                {cats.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+              <CustomSelect className="min-w-36" value={typeof targetFilter === 'object' ? targetFilter.catId : 'all'} onChange={(val) => setTargetFilter(val === 'all' ? 'All' : { catId: val })} options={[{ value: 'all', label: '所有管辖目标' }, ...cats.map(cat => ({ value: cat.id, label: cat.name }))]} />
             </div>
 
             <button
@@ -817,16 +803,7 @@ export const RoutineTasks: React.FC<RoutineTasksProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">选择物品</label>
-                      <select
-                        value={linkedItemId}
-                        onChange={(e) => setLinkedItemId(e.target.value)}
-                        className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-2 bg-stone-50/50 focus:bg-white focus:border-amber-400 outline-hidden transition"
-                      >
-                        <option value="">请选择要扣减的库存</option>
-                        {supplies.map(item => (
-                          <option key={item.id} value={item.id}>{item.name}（剩余 {item.stockAmount}{item.unit}）</option>
-                        ))}
-                      </select>
+                      <CustomSelect value={linkedItemId} onChange={setLinkedItemId} options={[{ value: '', label: '请选择要扣减的库存' }, ...supplies.map(item => ({ value: item.id, label: `${item.name}（剩余 ${item.stockAmount}${item.unit}）` }))]} />
                     </div>
 
                     {linkedItemId && (

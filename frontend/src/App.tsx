@@ -559,6 +559,7 @@ export default function App() {
           {activeTab === 'history' && (
             <TaskHistory
               tasks={tasks}
+              cats={cats}
               supplies={supplies}
             />
           )}

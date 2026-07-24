@@ -106,6 +106,7 @@ class TaskCompletion(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
+    cat_id = Column(Integer, ForeignKey("cats.id", ondelete="SET NULL"), nullable=True)
     completed_at = Column(DateTime, default=utc_now_naive)
     notes = Column(Text)
     severity = Column(String(20), default="normal")
@@ -135,6 +136,8 @@ class Inventory(Base):
     id = Column(Integer, primary_key=True, index=True)
     category_id = Column(Integer, ForeignKey("inventory_categories.id", ondelete="SET NULL"), nullable=True)
     name = Column(String(200), nullable=False)
+    brand = Column(String(100))
+    is_food = Column(Boolean, default=False)
     unit = Column(String(20), nullable=False)  # kg/L/袋/盒
     current_quantity = Column(Numeric(10, 2), default=0)
     weekly_consumption = Column(Numeric(10, 2), default=0)  # 每周消耗量

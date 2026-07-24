@@ -253,6 +253,7 @@ export const apiClient = {
     return rows.map((row: any) => ({
       id: String(row.id),
       taskId: String(row.task_id),
+      catId: row.cat_id ? String(row.cat_id) : '',
       completedAt: toLocalDateTimeInput(row.completed_at),
       notes: row.notes || '',
       severity: row.severity || 'normal',
@@ -295,6 +296,9 @@ export const apiClient = {
       return {
         id: String(item.id),
         name: item.name,
+        brand: item.brand || '',
+        isFood: Boolean(item.is_food),
+        purchaseUrl: item.purchase_url || '',
         categoryId: item.category_id ? String(item.category_id) : null,
         categoryName: item.category?.name || '未分类',
         categoryIcon: item.category?.icon || '📦',
@@ -339,6 +343,8 @@ export const apiClient = {
 
     const payload = {
       name: supply.name,
+      brand: supply.brand || null,
+      is_food: Boolean(supply.isFood),
       unit: supply.unit,
       current_quantity: supply.stockAmount,
       weekly_consumption: supply.dailyConsumption ? supply.dailyConsumption * 7 : 0,
@@ -349,7 +355,7 @@ export const apiClient = {
       production_date: supply.productionDate || null,
       shelf_life_days: supply.shelfLifeDays || null,
       price_per_unit: 0,
-      purchase_url: '',
+      purchase_url: supply.purchaseUrl || null,
       notes: supply.note,
       category_id: categoryId
     };
@@ -365,6 +371,8 @@ export const apiClient = {
     const categoryId = supply.categoryId ? Number(supply.categoryId) : await getOrCreateCategory(supply.categoryName);
     const payload = {
       name: supply.name,
+      brand: supply.brand || null,
+      is_food: Boolean(supply.isFood),
       unit: supply.unit,
       current_quantity: supply.stockAmount,
       weekly_consumption: supply.dailyConsumption ? supply.dailyConsumption * 7 : 0,
@@ -373,6 +381,7 @@ export const apiClient = {
       expiry_warning_days: supply.expiryWarningDays || 7,
       production_date: supply.productionDate || null,
       shelf_life_days: supply.shelfLifeDays || null,
+      purchase_url: supply.purchaseUrl || null,
       notes: supply.note,
       category_id: categoryId
     };

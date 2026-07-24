@@ -3,6 +3,7 @@ import { Cat } from '../types';
 import { BREED_OPTIONS, DEFAULT_CAT_AVATAR } from '../data';
 import { X, Save } from 'lucide-react';
 import { motion } from 'motion/react';
+import { CustomSelect } from './CustomSelect';
 
 interface AddEditCatModalProps {
   catToEdit?: Cat | null;
@@ -84,17 +85,7 @@ export const AddEditCatModal: React.FC<AddEditCatModalProps> = ({
               <label className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
                 品种 / 品系 *
               </label>
-              <select
-                value={breed}
-                onChange={(e) => setBreed(e.target.value)}
-                className="w-full rounded-lg border border-stone-200 py-1.5 px-3 bg-stone-50/50 focus:bg-white focus:border-amber-400 outline-hidden text-xs font-bold"
-              >
-                {BREED_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
+              <CustomSelect value={breed} onChange={setBreed} options={BREED_OPTIONS.map(option => ({ value: option, label: option }))} />
             </div>
           </div>
 

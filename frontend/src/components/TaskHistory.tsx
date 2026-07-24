@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CalendarRange, Filter, History, Link2, RefreshCw } from 'lucide-react';
-import { RoutineTask, SupplyItem, TaskCompletion, TaskCompletionSeverity } from '../types';
+import { Cat, RoutineTask, SupplyItem, TaskCompletion, TaskCompletionSeverity } from '../types';
 import { apiClient } from '../utils/apiClient';
+import { CustomSelect } from './CustomSelect';
 
 interface TaskHistoryProps {
   tasks: RoutineTask[];
+  cats: Cat[];
   supplies: SupplyItem[];
 }
 
@@ -47,7 +49,7 @@ const scheduleLabels: Record<RoutineTask['scheduleType'], string> = {
   cron: '定期任务',
 };
 
-export const TaskHistory: React.FC<TaskHistoryProps> = ({ tasks, supplies }) => {
+export const TaskHistory: React.FC<TaskHistoryProps> = ({ tasks, cats, supplies }) => {
   const [startDate, setStartDate] = useState(startOfToday);
   const [endDate, setEndDate] = useState(endOfToday);
   const [taskId, setTaskId] = useState('');
@@ -134,44 +136,17 @@ export const TaskHistory: React.FC<TaskHistoryProps> = ({ tasks, supplies }) => 
 
             <label className="space-y-1.5">
               <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">任务名称</span>
-              <select
-                value={taskId}
-                onChange={(e) => setTaskId(e.target.value)}
-                className="w-full rounded-lg border border-stone-200 bg-white py-2 px-3 text-xs font-medium outline-hidden focus:border-amber-400"
-              >
-                <option value="">全部任务</option>
-                {tasks.map(task => (
-                  <option key={task.id} value={task.id}>{task.title}</option>
-                ))}
-              </select>
+              <CustomSelect value={taskId} onChange={setTaskId} options={[{ value: '', label: '全部任务' }, ...tasks.map(task => ({ value: task.id, label: task.title }))]} />
             </label>
 
             <label className="space-y-1.5">
               <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">任务类型</span>
-              <select
-                value={scheduleType}
-                onChange={(e) => setScheduleType(e.target.value)}
-                className="w-full rounded-lg border border-stone-200 bg-white py-2 px-3 text-xs font-medium outline-hidden focus:border-amber-400"
-              >
-                <option value="">全部类型</option>
-                <option value="cron">定期任务</option>
-                <option value="interval">间隔任务</option>
-                <option value="temporary">临时任务</option>
-              </select>
+              <CustomSelect value={scheduleType} onChange={setScheduleType} options={[{ value: '', label: '全部类型' }, { value: 'cron', label: '定期任务' }, { value: 'interval', label: '间隔任务' }, { value: 'temporary', label: '临时任务' }]} />
             </label>
 
             <label className="space-y-1.5">
               <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">记录级别</span>
-              <select
-                value={severity}
-                onChange={(e) => setSeverity(e.target.value)}
-                className="w-full rounded-lg border border-stone-200 bg-white py-2 px-3 text-xs font-medium outline-hidden focus:border-amber-400"
-              >
-                <option value="">全部级别</option>
-                <option value="normal">正常</option>
-                <option value="warning">警告</option>
-                <option value="abnormal">异常</option>
-              </select>
+              <CustomSelect value={severity} onChange={setSeverity} options={[{ value: '', label: '全部级别' }, { value: 'normal', label: '正常' }, { value: 'warning', label: '警告' }, { value: 'abnormal', label: '异常' }]} />
             </label>
           </div>
 
@@ -218,6 +193,7 @@ export const TaskHistory: React.FC<TaskHistoryProps> = ({ tasks, supplies }) => 
                   <tr className="text-[10px] uppercase tracking-wider text-stone-400 border-b border-stone-100">
                     <th className="py-3 pr-4 font-bold">完成时间</th>
                     <th className="py-3 pr-4 font-bold">任务名称</th>
+                    <th className="py-3 pr-4 font-bold">完成对象</th>
                     <th className="py-3 pr-4 font-bold">任务类型</th>
                     <th className="py-3 pr-4 font-bold">记录级别</th>
                     <th className="py-3 pr-4 font-bold">完成备注</th>
@@ -227,6 +203,7 @@ export const TaskHistory: React.FC<TaskHistoryProps> = ({ tasks, supplies }) => 
                 <tbody className="divide-y divide-stone-100 text-[12px] text-stone-700">
                   {records.map(record => {
                     const task = taskMap.get(record.taskId);
+                    const cat = cats.find(item => item.id === record.catId);
                     const supply = supplyMap.get(record.linkedItemId);
                     const recordSeverity = record.severity || 'normal';
 
@@ -236,6 +213,9 @@ export const TaskHistory: React.FC<TaskHistoryProps> = ({ tasks, supplies }) => 
                         <td className="py-3 pr-4">
                           <div className="font-bold text-stone-900">{task?.title || '已删除任务'}</div>
                           {task?.note && <div className="mt-1 text-[11px] text-stone-400 line-clamp-2">{task.note}</div>}
+                        </td>
+                        <td className="py-3 pr-4">
+                          <span className="inline-flex rounded-md bg-amber-50 border border-amber-100 px-2 py-1 text-[10px] font-semibold text-amber-800">{cat?.name || '全部对象'}</span>
                         </td>
                         <td className="py-3 pr-4">
                           <span className="inline-flex rounded-md bg-stone-50 border border-stone-200 px-2 py-1 text-[10px] font-semibold text-stone-600">

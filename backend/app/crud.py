@@ -307,28 +307,24 @@ def complete_task(db: Session, task_id: int, completion: Optional[schemas.TaskCo
         models.TaskCatCompletion.task_id == task_id,
         models.TaskCatCompletion.cycle_due_date == cycle_due_date,
     ).all()}
-    if target_cat_ids and not set(target_cat_ids).issubset(completed_cat_ids):
-        db.commit()
-        db.refresh(db_task)
-        return db_task
     deducted_quantity = db_task.linked_item_quantity or Decimal("0")
-
     if db_task.linked_item_id and deducted_quantity > 0:
         item = get_inventory_item(db, db_task.linked_item_id)
         if item:
-            item.current_quantity = item.current_quantity - deducted_quantity
-            if item.current_quantity < 0:
-                item.current_quantity = Decimal("0")
-
-    db_completion = models.TaskCompletion(
+            item.current_quantity = max(Decimal("0"), item.current_quantity - deducted_quantity)
+    db.add(models.TaskCompletion(
         task_id=task_id,
+        cat_id=requested_cat_id,
         completed_at=completed_at,
         notes=completion.notes if completion else None,
         severity=(completion.severity if completion and completion.severity else "normal"),
         linked_item_id=db_task.linked_item_id,
-        deducted_quantity=deducted_quantity
-    )
-    db.add(db_completion)
+        deducted_quantity=deducted_quantity,
+    ))
+    if target_cat_ids and not set(target_cat_ids).issubset(completed_cat_ids):
+        db.commit()
+        db.refresh(db_task)
+        return db_task
     db_task.completed_count = (db_task.completed_count or 0) + 1
 
     schedule_type = db_task.schedule_type or ("interval" if db_task.frequency_days > 0 else "temporary")

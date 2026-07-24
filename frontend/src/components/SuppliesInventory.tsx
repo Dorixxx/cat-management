@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { SupplyItem, InventoryCategory } from '../types';
 import { Package, Plus, Trash2, Edit3, PenTool, X, AlertTriangle, FolderPlus } from 'lucide-react';
+import { CustomSelect } from './CustomSelect';
 
 interface SuppliesInventoryProps {
   supplies: SupplyItem[];
@@ -29,6 +30,9 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
   const [categoryNameDraft, setCategoryNameDraft] = useState('');
 
   const [name, setName] = useState('');
+  const [brand, setBrand] = useState('');
+  const [purchaseUrl, setPurchaseUrl] = useState('');
+  const [isFood, setIsFood] = useState(false);
   const [categoryId, setCategoryId] = useState('');
   const [stockAmount, setStockAmount] = useState<number>(1);
   const [unit, setUnit] = useState('kg');
@@ -86,6 +90,9 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
     const selected = categoryId ? categoryLookup.get(categoryId) || null : null;
     const payload = {
       name: name.trim(),
+      brand: brand.trim(),
+      purchaseUrl: purchaseUrl.trim(),
+      isFood,
       categoryId: selected?.id || null,
       categoryName: selected?.name || '未分类',
       categoryIcon: selected?.icon || '📦',
@@ -93,9 +100,9 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
       unit: unit || '件',
       minThreshold: Number(minThreshold),
       dailyConsumption: Number(dailyConsumption),
-      productionDate,
-      shelfLifeDays: Number(shelfLifeDays),
-      expiryWarningDays: Number(expiryWarningDays),
+      productionDate: isFood ? productionDate : '',
+      shelfLifeDays: isFood ? Number(shelfLifeDays) : 0,
+      expiryWarningDays: isFood ? Number(expiryWarningDays) : 7,
       note: note.trim(),
     };
 
@@ -114,6 +121,9 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
   const startEdit = (item: SupplyItem) => {
     setIsEditing(item.id);
     setName(item.name);
+    setBrand(item.brand || '');
+    setPurchaseUrl(item.purchaseUrl || '');
+    setIsFood(Boolean(item.isFood));
     setCategoryId(item.categoryId || '');
     setStockAmount(item.stockAmount);
     setUnit(item.unit);
@@ -129,6 +139,9 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
   const resetForm = () => {
     setIsEditing(null);
     setName('');
+    setBrand('');
+    setPurchaseUrl('');
+    setIsFood(false);
     setCategoryId('');
     setStockAmount(1);
     setUnit('kg');
@@ -224,6 +237,13 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
                 <h4 className="font-bold text-xs text-stone-850 tracking-tight leading-snug min-h-8 line-clamp-2">
                   {item.name}
                 </h4>
+                {(item.brand || item.isFood || item.purchaseUrl) && (
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {item.brand && <span className="rounded-md bg-violet-50 border border-violet-100 px-1.5 py-0.5 text-[9px] font-bold text-violet-700">{item.brand}</span>}
+                    {item.isFood && <span className="rounded-md bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">食品</span>}
+                    {item.purchaseUrl && <a href={item.purchaseUrl} target="_blank" rel="noreferrer" className="rounded-md bg-sky-50 border border-sky-100 px-1.5 py-0.5 text-[9px] font-bold text-sky-700 hover:bg-sky-100">购买链接</a>}
+                  </div>
+                )}
 
                 <div className="border-t border-stone-50 pt-3 mt-3">
                   <span className="text-[9px] text-stone-400 font-mono">
@@ -291,6 +311,23 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
                 <input type="text" placeholder="例如：幼猫粮、膨润土猫砂、益生菌" value={name} required onChange={(e) => setName(e.target.value)} className="w-full text-xs font-medium rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" />
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">品牌 / 标签</label>
+                  <input type="text" placeholder="例如：皇家、处方粮" value={brand} onChange={(e) => setBrand(e.target.value)} className="w-full text-xs font-medium rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">购买链接</label>
+                  <input type="url" placeholder="可选：商品购买链接" value={purchaseUrl} onChange={(e) => setPurchaseUrl(e.target.value)} className="w-full text-xs font-medium rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 rounded-xl border border-stone-200 bg-stone-50/60 px-3 py-2.5 cursor-pointer">
+                <input type="checkbox" checked={isFood} onChange={(e) => setIsFood(e.target.checked)} className="h-4 w-4 rounded border-stone-300 text-amber-600" />
+                <span className="text-[11px] font-bold text-stone-700">这是食品</span>
+                <span className="text-[10px] text-stone-400">开启后可填写生产日期与保质期</span>
+              </label>
+
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">物品分类</label>
@@ -299,21 +336,13 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
                     新建分类
                   </button>
                 </div>
-                <select
-                  value={categoryId}
-                  onChange={(e) => {
-                    if (e.target.value === '__new_category__') {
+                <CustomSelect value={categoryId} onChange={(value) => {
+                    if (value === '__new_category__') {
                       setShowCategoryModal(true);
                       return;
                     }
-                    setCategoryId(e.target.value);
-                  }}
-                  className="w-full text-xs font-bold rounded-lg border border-stone-200 py-2.5 px-2 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition"
-                >
-                  <option value="">未分类</option>
-                  {categories.map(category => <option key={category.id} value={category.id}>{category.icon} {category.name}</option>)}
-                  <option value="__new_category__">+ 新建分类...</option>
-                </select>
+                    setCategoryId(value);
+                  }} options={[{ value: '', label: '未分类' }, ...categories.map(category => ({ value: category.id, label: `${category.icon} ${category.name}` })), { value: '__new_category__', label: '+ 新建分类...' }]} />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
@@ -323,10 +352,7 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">存储单位 *</label>
-                  <select value={unit} required onChange={(e) => setUnit(e.target.value)} className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-2 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition">
-                    {unit && !UNIT_OPTIONS.includes(unit) && <option value={unit}>{unit}</option>}
-                    {UNIT_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
-                  </select>
+                  <CustomSelect value={unit} onChange={setUnit} options={[...(unit && !UNIT_OPTIONS.includes(unit) ? [{ value: unit, label: unit }] : []), ...UNIT_OPTIONS.map(option => ({ value: option, label: option }))]} />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">库存警戒线 *</label>
@@ -338,7 +364,7 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {isFood && <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                 <div>
                   <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">生产日期</label>
                   <input type="date" value={productionDate} onChange={(e) => setProductionDate(e.target.value)} className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" />
@@ -349,7 +375,7 @@ export const SuppliesInventory: React.FC<SuppliesInventoryProps> = ({
                   <input type="number" min="0" value={shelfLifeDays || ''} onChange={(e) => setShelfLifeDays(Math.max(0, Number(e.target.value)))} className="w-full text-xs font-semibold rounded-lg border border-stone-200 py-2.5 px-3 bg-stone-50/50 focus:bg-white outline-hidden focus:border-amber-400 transition" placeholder="例如：540" />
                   <p className="mt-1 text-[10px] text-stone-400">系统会结合设置页的临期提前天数提醒。</p>
                 </div>
-              </div>
+              </div>}
 
               <div>
                 <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">备注</label>

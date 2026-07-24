@@ -128,6 +128,7 @@ class TaskCompleteRequest(BaseModel):
 class TaskCompletionResponse(BaseModel):
     id: int
     task_id: int
+    cat_id: Optional[int]
     completed_at: datetime
     notes: Optional[str]
     severity: str
@@ -167,6 +168,8 @@ class InventoryCategoryResponse(InventoryCategoryBase):
 # ============== Inventory Schemas ==============
 class InventoryBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
+    brand: Optional[str] = Field(None, max_length=100)
+    is_food: bool = False
     unit: str = Field(..., min_length=1, max_length=20)
     current_quantity: Optional[Decimal] = Decimal("0")
     weekly_consumption: Optional[Decimal] = Decimal("0")
@@ -187,6 +190,8 @@ class InventoryCreate(InventoryBase):
 
 class InventoryUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=200)
+    brand: Optional[str] = Field(None, max_length=100)
+    is_food: Optional[bool] = None
     unit: Optional[str] = Field(None, min_length=1, max_length=20)
     current_quantity: Optional[Decimal] = None
     weekly_consumption: Optional[Decimal] = None

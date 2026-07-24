@@ -41,6 +41,8 @@ def ensure_schema_updates():
         "task_notification_limit": "INTEGER DEFAULT 1",
     })
     add_missing_columns("inventory", {
+        "brand": "VARCHAR(100)",
+        "is_food": "BOOLEAN DEFAULT FALSE",
         "daily_consumption": "NUMERIC(10, 2) DEFAULT 0",
         "expiry_warning_days": "INTEGER DEFAULT 7",
         "production_date": "DATE",
@@ -58,6 +60,7 @@ def ensure_schema_updates():
     })
     add_missing_columns("task_completions", {
         "severity": "VARCHAR(20) DEFAULT 'normal'",
+        "cat_id": "INTEGER",
     })
 
     if "cats" in table_names:

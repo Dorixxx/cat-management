@@ -22,6 +22,9 @@ export interface InventoryCategory {
 export interface SupplyItem {
   id: string;
   name: string;
+  brand?: string;
+  isFood?: boolean;
+  purchaseUrl?: string;
   categoryId: string | null;
   categoryName: string;
   categoryIcon: string;
@@ -66,6 +69,7 @@ export interface WeightRecord {
 export interface TaskCompletion {
   id: string;
   taskId: string;
+  catId: string;
   completedAt: string;
   notes: string;
   severity: TaskCompletionSeverity;
